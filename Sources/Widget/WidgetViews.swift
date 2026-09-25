@@ -46,12 +46,12 @@ struct UsageWidgetContent: View {
                 let limits = Array(snapshot.limits.prefix(3))
                 VStack(alignment: .leading, spacing: 0) {
                     Header(snapshot: snapshot, now: now, showUpdated: size == .medium)
-                    Spacer(minLength: 6)
+                    Spacer(minLength: 10)
                     switch size {
                     case .small: SmallLayout(limits: limits, now: now)
                     case .medium: MediumLayout(limits: limits, now: now)
                     }
-                    Spacer(minLength: 0)
+                    Spacer(minLength: 4)
                     if size == .medium, let error = snapshot.error {
                         Text(error)
                             .font(.system(size: 10, weight: .medium))
@@ -103,11 +103,11 @@ private struct SmallLayout: View {
     let now: Date
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 0) {
                 Spacer(minLength: 0)
                 ConcentricRings(limits: limits)
-                    .frame(width: 78, height: 78)
+                    .frame(width: 72, height: 72)
                 Spacer(minLength: 0)
             }
             VStack(alignment: .leading, spacing: 3) {
@@ -156,13 +156,13 @@ private struct MediumLayout: View {
     var body: some View {
         HStack(alignment: .top, spacing: 0) {
             ForEach(limits) { limit in
-                VStack(spacing: 7) {
+                VStack(spacing: 9) {
                     ZStack {
-                        Ring(progress: limit.percent / 100, color: Palette.color(for: limit), lineWidth: 8)
-                        PercentText(limit: limit, size: 17)
+                        Ring(progress: limit.percent / 100, color: Palette.color(for: limit), lineWidth: 7)
+                        PercentText(limit: limit, size: 16)
                     }
-                    .frame(width: 70, height: 70)
-                    VStack(spacing: 1) {
+                    .frame(width: 60, height: 60)
+                    VStack(spacing: 2) {
                         Text(limit.label)
                             .font(.system(size: 12, weight: .semibold, design: .rounded))
                             .lineLimit(1)

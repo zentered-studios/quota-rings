@@ -6,15 +6,30 @@ import SwiftUI
 let outDir = URL(fileURLWithPath: CommandLine.arguments.dropFirst().first ?? "build/render", isDirectory: true)
 try FileManager.default.createDirectory(at: outDir, withIntermediateDirectories: true)
 
-let live = SnapshotStore.load()
-var stale = UsageSnapshot.placeholder
-stale.error = "Token expired. Run `claude` once to refresh it."
+let data = SnapshotStore.load().flatMap { $0.limits.isEmpty ? nil : $0 } ?? .placeholder
+
+func withStatus(_ status: UsageStatus, keepLimits: Bool) -> UsageSnapshot {
+    var s = data
+    s.status = status
+    if !keepLimits { s.limits = [] }
+    return s
+}
+
+let small = CGSize(width: 170, height: 170)
+let medium = CGSize(width: 364, height: 170)
 
 let cases: [(String, WidgetSize, UsageSnapshot?, CGSize)] = [
-    ("small", .small, live ?? .placeholder, CGSize(width: 170, height: 170)),
-    ("medium", .medium, live ?? .placeholder, CGSize(width: 364, height: 170)),
-    ("medium-error", .medium, stale, CGSize(width: 364, height: 170)),
-    ("small-empty", .small, nil, CGSize(width: 170, height: 170)),
+    ("small", .small, data, small),
+    ("medium", .medium, data, medium),
+    ("small-expired", .small, withStatus(.expired, keepLimits: true), small),
+    ("medium-expired", .medium, withStatus(.expired, keepLimits: true), medium),
+    ("small-offline", .small, withStatus(.offline, keepLimits: true), small),
+    ("small-not-signed-in", .small, withStatus(.notSignedIn, keepLimits: false), small),
+    ("medium-not-signed-in", .medium, withStatus(.notSignedIn, keepLimits: false), medium),
+    ("small-no-plan", .small, withStatus(.noPlan, keepLimits: false), small),
+    ("small-expired-empty", .small, withStatus(.expired, keepLimits: false), small),
+    ("small-not-running", .small, nil, small),
+    ("medium-not-running", .medium, nil, medium),
 ]
 
 @MainActor func render() throws {

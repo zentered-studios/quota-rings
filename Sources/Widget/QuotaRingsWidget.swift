@@ -27,14 +27,14 @@ struct UsageProvider: TimelineProvider {
 }
 
 @main
-struct ClaudeUsageWidget: Widget {
+struct QuotaRingsWidget: Widget {
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: "ClaudeUsageWidget", provider: UsageProvider()) { entry in
+        StaticConfiguration(kind: "QuotaRingsWidget", provider: UsageProvider()) { entry in
             UsageWidgetView(entry: entry)
                 .containerBackground(for: .widget) { WidgetBackground() }
         }
-        .configurationDisplayName("Claude Usage")
-        .description("Session, weekly and model-specific plan usage.")
+        .configurationDisplayName("Quota Rings")
+        .description("Session, weekly and per-model plan usage.")
         .supportedFamilies([.systemSmall, .systemMedium])
     }
 }
@@ -49,7 +49,7 @@ struct UsageWidgetView: View {
 }
 
 #Preview(as: .systemMedium) {
-    ClaudeUsageWidget()
+    QuotaRingsWidget()
 } timeline: {
     UsageEntry(date: Date(), snapshot: .placeholder)
 }

@@ -3,12 +3,12 @@
 set -eu
 cd "$(dirname "$0")/.."
 xcodegen generate --quiet
-xcodebuild -project ClaudeUsage.xcodeproj -scheme ClaudeUsage -configuration Release \
+xcodebuild -project QuotaRings.xcodeproj -scheme QuotaRings -configuration Release \
   -derivedDataPath build/DerivedData -quiet build
-APP="build/DerivedData/Build/Products/Release/Claude Usage.app"
-DEST="$HOME/Applications/Claude Usage.app"
+APP="build/DerivedData/Build/Products/Release/Quota Rings.app"
+DEST="$HOME/Applications/Quota Rings.app"
 mkdir -p "$HOME/Applications"
-pkill -x "Claude Usage" 2>/dev/null || true
+pkill -x "Quota Rings" 2>/dev/null || true
 rm -rf "$DEST"
 cp -R "$APP" "$DEST"
 open "$DEST"

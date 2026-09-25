@@ -3,7 +3,7 @@ import SwiftUI
 import WidgetKit
 
 @main
-struct ClaudeUsageApp: App {
+struct QuotaRingsApp: App {
     @NSApplicationDelegateAdaptor private var delegate: AppDelegate
     @StateObject private var model = UsageModel.shared
 
@@ -11,7 +11,10 @@ struct ClaudeUsageApp: App {
         MenuBarExtra {
             MenuContent(model: model)
         } label: {
-            Text(model.menuBarTitle)
+            Image(nsImage: MenuBarIcon.image)
+            if let title = model.menuBarTitle {
+                Text(title)
+            }
         }
     }
 }
@@ -28,6 +31,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 final class UsageModel: ObservableObject {
     static let shared = UsageModel()
     static let pollInterval: TimeInterval = 5 * 60
+    private static let didSetUpLoginItemKey = "didSetUpLoginItem"
 
     @Published private(set) var snapshot: UsageSnapshot?
     @Published var launchAtLogin = SMAppService.mainApp.status == .enabled
@@ -37,6 +41,7 @@ final class UsageModel: ObservableObject {
 
     private init() {
         snapshot = SnapshotStore.load()
+        enableLoginItemOnFirstLaunch()
         Task { await refresh() }
         timer = Timer.scheduledTimer(withTimeInterval: Self.pollInterval, repeats: true) { [weak self] _ in
             Task { await self?.refresh() }
@@ -49,38 +54,51 @@ final class UsageModel: ObservableObject {
         }
     }
 
-    var menuBarTitle: String {
-        guard let limits = snapshot?.limits, !limits.isEmpty else { return "Claude –" }
+    /// `session% · week%`, or nil to show the icon alone.
+    var menuBarTitle: String? {
+        guard let limits = snapshot?.limits, !limits.isEmpty else { return nil }
         let session = limits.first { $0.kind == .session }
         let weekly = limits.first { $0.kind == .weekly }
         let parts = [session, weekly].compactMap { $0.map { "\(Int($0.percent.rounded()))%" } }
-        return parts.isEmpty ? "Claude" : parts.joined(separator: " · ")
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
 
     func refresh() async {
         var next: UsageSnapshot
         do {
             let limits = try await UsageFetcher.fetch()
-            next = UsageSnapshot(limits: limits, fetchedAt: Date(), error: nil)
+            next = UsageSnapshot(limits: limits, fetchedAt: Date())
         } catch {
-            // Keep the last good values and report the failure next to them.
-            next = snapshot ?? UsageSnapshot(limits: [], fetchedAt: Date(), error: nil)
+            let status = UsageFetcher.status(for: error)
+            // Keep the last good values unless the account state changed under them.
+            next = snapshot ?? UsageSnapshot(limits: [], fetchedAt: Date())
+            if status.clearsLimits { next.limits = [] }
+            next.status = status
             next.error = error.localizedDescription
         }
         snapshot = next
         do {
             try SnapshotStore.save(next)
         } catch {
+            snapshot?.status = .failed
             snapshot?.error = "Could not write \(SnapshotStore.fileURL.path): \(error.localizedDescription)"
         }
         WidgetCenter.shared.reloadAllTimelines()
+    }
+
+    /// The widget only updates while this app runs, so start at login by default.
+    /// The user can turn it off in the menu, and that choice sticks.
+    private func enableLoginItemOnFirstLaunch() {
+        guard !UserDefaults.standard.bool(forKey: Self.didSetUpLoginItemKey) else { return }
+        UserDefaults.standard.set(true, forKey: Self.didSetUpLoginItemKey)
+        setLaunchAtLogin(true)
     }
 
     func setLaunchAtLogin(_ enabled: Bool) {
         do {
             if enabled { try SMAppService.mainApp.register() } else { try SMAppService.mainApp.unregister() }
         } catch {
-            snapshot?.error = "Launch at login: \(error.localizedDescription)"
+            NSLog("Quota Rings: launch at login: \(error.localizedDescription)")
         }
         launchAtLogin = SMAppService.mainApp.status == .enabled
     }
@@ -91,19 +109,25 @@ struct MenuContent: View {
 
     var body: some View {
         if let snapshot = model.snapshot {
+            if let status = snapshot.status {
+                Label(status.title, systemImage: status.symbol)
+                Text(status.detail)
+                if let error = snapshot.error, status == .failed {
+                    Text(error)
+                }
+                Divider()
+            }
             ForEach(snapshot.limits) { limit in
                 Text("\(limit.label): \(Int(limit.percent.rounded()))%\(resetText(limit))")
             }
-            if let error = snapshot.error {
+            if !snapshot.limits.isEmpty {
+                Text("Updated \(snapshot.fetchedAt.formatted(date: .omitted, time: .shortened))")
                 Divider()
-                Text(error)
             }
-            Divider()
-            Text("Updated \(snapshot.fetchedAt.formatted(date: .omitted, time: .shortened))")
         } else {
             Text("Loading…")
+            Divider()
         }
-        Divider()
         Button("Refresh Now") { Task { await model.refresh() } }
             .keyboardShortcut("r")
         Toggle("Open at Login", isOn: Binding(
@@ -111,7 +135,7 @@ struct MenuContent: View {
             set: { model.setLaunchAtLogin($0) }
         ))
         Divider()
-        Button("Quit") { NSApplication.shared.terminate(nil) }
+        Button("Quit Quota Rings") { NSApplication.shared.terminate(nil) }
             .keyboardShortcut("q")
     }
 
@@ -119,4 +143,26 @@ struct MenuContent: View {
         guard let reset = limit.resetsAt else { return "" }
         return " (resets \(reset.formatted(.relative(presentation: .named))))"
     }
+}
+
+/// Three concentric arcs drawn as a template image so it follows the menu bar tint.
+enum MenuBarIcon {
+    static let image: NSImage = {
+        let size = NSSize(width: 16, height: 16)
+        let image = NSImage(size: size, flipped: false) { rect in
+            let center = NSPoint(x: rect.midX, y: rect.midY)
+            let arcs: [(radius: CGFloat, sweep: CGFloat)] = [(6.6, 290), (4.3, 220), (2.0, 150)]
+            for arc in arcs {
+                let path = NSBezierPath()
+                path.appendArc(withCenter: center, radius: arc.radius, startAngle: 90, endAngle: 90 - arc.sweep, clockwise: true)
+                path.lineWidth = 1.7
+                path.lineCapStyle = .round
+                NSColor.black.setStroke()
+                path.stroke()
+            }
+            return true
+        }
+        image.isTemplate = true
+        return image
+    }()
 }

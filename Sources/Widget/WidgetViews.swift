@@ -39,28 +39,31 @@ struct UsageWidgetContent: View {
 
     /// Snapshots older than this are marked stale, e.g. when the agent is not running.
     static let staleAfter: TimeInterval = 20 * 60
+    /// Opacity for old numbers shown next to a status, so they read as out of date.
+    static let dimmed: Double = 0.45
 
     var body: some View {
         Group {
             if let snapshot, !snapshot.limits.isEmpty {
                 let limits = Array(snapshot.limits.prefix(3))
+                let stale = now.timeIntervalSince(snapshot.fetchedAt) > Self.staleAfter
                 VStack(alignment: .leading, spacing: 0) {
-                    Header(snapshot: snapshot, now: now, showUpdated: size == .medium)
+                    Header(trailing: size == .medium ? shortAge(since: snapshot.fetchedAt, now: now) : nil,
+                           warning: stale && snapshot.status == nil)
                     Spacer(minLength: 10)
                     switch size {
-                    case .small: SmallLayout(limits: limits, now: now)
-                    case .medium: MediumLayout(limits: limits, now: now)
+                    case .small: SmallLayout(limits: limits, now: now, status: snapshot.status)
+                    case .medium:
+                        MediumLayout(limits: limits, now: now)
+                            .opacity(snapshot.status == nil ? 1 : Self.dimmed)
                     }
                     Spacer(minLength: 4)
-                    if size == .medium, let error = snapshot.error {
-                        Text(error)
-                            .font(.system(size: 10, weight: .medium))
-                            .foregroundStyle(Palette.critical)
-                            .lineLimit(1)
+                    if size == .medium, let status = snapshot.status {
+                        StatusLine(status: status, showDetail: true)
                     }
                 }
             } else {
-                EmptyState(message: snapshot?.error)
+                EmptyState(size: size, info: StateInfo(snapshot: snapshot))
             }
         }
         .foregroundStyle(.white)
@@ -69,30 +72,88 @@ struct UsageWidgetContent: View {
 }
 
 private struct Header: View {
-    let snapshot: UsageSnapshot
-    let now: Date
-    let showUpdated: Bool
+    let trailing: String?
+    let warning: Bool
 
     var body: some View {
-        HStack(spacing: 5) {
-            Image(systemName: "sparkle")
-                .font(.system(size: 11, weight: .bold))
-                .foregroundStyle(Palette.session)
-            Text("CLAUDE")
-                .font(.system(size: 11, weight: .heavy, design: .rounded))
-                .tracking(1.6)
+        HStack(spacing: 6) {
+            MiniRings()
+                .frame(width: 12, height: 12)
+            Text("PLAN USAGE")
+                .font(.system(size: 10, weight: .heavy, design: .rounded))
+                .tracking(1.4)
             Spacer(minLength: 4)
-            if snapshot.error != nil || now.timeIntervalSince(snapshot.fetchedAt) > UsageWidgetContent.staleAfter {
+            if warning {
                 Image(systemName: "exclamationmark.triangle.fill")
                     .font(.system(size: 10))
                     .foregroundStyle(Palette.week)
             }
-            if showUpdated {
-                Text(shortAge(since: snapshot.fetchedAt, now: now))
+            if let trailing {
+                Text(trailing)
                     .font(.system(size: 10, weight: .medium, design: .rounded))
                     .foregroundStyle(Palette.secondary)
             }
         }
+    }
+}
+
+/// The app mark: three concentric arcs in the ring colors.
+struct MiniRings: View {
+    var body: some View {
+        GeometryReader { geo in
+            let side = min(geo.size.width, geo.size.height)
+            let line = side * 0.13
+            ZStack {
+                ForEach(Array([(Palette.session, 0.8), (Palette.week, 0.62), (Palette.model, 0.42)].enumerated()), id: \.offset) { index, ring in
+                    Circle()
+                        .trim(from: 0, to: ring.1)
+                        .stroke(ring.0, style: StrokeStyle(lineWidth: line, lineCap: .round))
+                        .rotationEffect(.degrees(-90))
+                        .padding(line / 2 + CGFloat(index) * line * 1.6)
+                }
+            }
+            .frame(width: side, height: side)
+        }
+    }
+}
+
+/// Icon, title and next step for a widget that has no numbers to show.
+struct StateInfo {
+    let symbol: String
+    let title: String
+    let detail: String
+
+    init(snapshot: UsageSnapshot?) {
+        if let status = snapshot?.status {
+            symbol = status.symbol
+            title = status.title
+            detail = status.detail
+        } else if snapshot == nil {
+            symbol = "power"
+            title = "Not running"
+            detail = "Click to start Quota Rings."
+        } else {
+            symbol = "hourglass"
+            title = "Loading"
+            detail = "Fetching your usage."
+        }
+    }
+}
+
+private struct StatusLine: View {
+    let status: UsageStatus
+    let showDetail: Bool
+
+    var body: some View {
+        HStack(spacing: 4) {
+            Image(systemName: status.symbol)
+                .font(.system(size: 9, weight: .bold))
+            Text(showDetail ? "\(status.title) · \(status.detail)" : status.title)
+                .font(.system(size: 10, weight: .semibold, design: .rounded))
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+        }
+        .foregroundStyle(Palette.week)
     }
 }
 
@@ -101,6 +162,7 @@ private struct Header: View {
 private struct SmallLayout: View {
     let limits: [UsageLimit]
     let now: Date
+    let status: UsageStatus?
 
     /// The limit closest to running out. Its reset time is the one worth showing.
     private var tightest: UsageLimit? { limits.max { $0.percent < $1.percent } }
@@ -124,7 +186,10 @@ private struct SmallLayout: View {
                 }
                 Spacer(minLength: 0)
             }
-            if let tightest, let reset = tightest.resetsAt {
+            .opacity(status == nil ? 1 : UsageWidgetContent.dimmed)
+            if let status {
+                StatusLine(status: status, showDetail: false)
+            } else if let tightest, let reset = tightest.resetsAt {
                 HStack(spacing: 4) {
                     Image(systemName: "arrow.clockwise")
                         .font(.system(size: 8, weight: .bold))
@@ -239,23 +304,68 @@ private struct PercentText: View {
     }
 }
 
+/// No numbers to show: empty ring tracks with the state's icon, a title and the next step.
 private struct EmptyState: View {
-    let message: String?
+    let size: WidgetSize
+    let info: StateInfo
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 5) {
-                Image(systemName: "sparkle").foregroundStyle(Palette.session)
-                Text("CLAUDE").font(.system(size: 11, weight: .heavy, design: .rounded)).tracking(1.6)
+        VStack(alignment: .leading, spacing: 0) {
+            Header(trailing: nil, warning: false)
+            Spacer(minLength: 8)
+            switch size {
+            case .small:
+                VStack(alignment: .leading, spacing: 10) {
+                    EmptyRings(symbol: info.symbol)
+                        .frame(width: 52, height: 52)
+                    text
+                }
+            case .medium:
+                HStack(spacing: 16) {
+                    EmptyRings(symbol: info.symbol)
+                        .frame(width: 72, height: 72)
+                    text
+                    Spacer(minLength: 0)
+                }
             }
-            .font(.system(size: 11, weight: .bold))
-            Spacer(minLength: 0)
-            Text(message ?? "Click to start fetching usage.")
-                .font(.system(size: 12, weight: .medium, design: .rounded))
-                .foregroundStyle(Palette.secondary)
             Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var text: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(info.title)
+                .font(.system(size: size == .small ? 14 : 16, weight: .bold, design: .rounded))
+                .lineLimit(1)
+            Text(info.detail)
+                .font(.system(size: size == .small ? 10.5 : 12, weight: .medium, design: .rounded))
+                .foregroundStyle(Palette.secondary)
+                .lineLimit(3)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+}
+
+private struct EmptyRings: View {
+    let symbol: String
+
+    var body: some View {
+        GeometryReader { geo in
+            let side = min(geo.size.width, geo.size.height)
+            let line = side * 0.07
+            ZStack {
+                ForEach(Array([Palette.session, Palette.week, Palette.model].enumerated()), id: \.offset) { index, color in
+                    Circle()
+                        .stroke(color.opacity(0.3), lineWidth: line)
+                        .padding(line / 2 + CGFloat(index) * line * 1.8)
+                }
+                Image(systemName: symbol)
+                    .font(.system(size: side * 0.19, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.85))
+            }
+            .frame(width: side, height: side)
+        }
     }
 }
 

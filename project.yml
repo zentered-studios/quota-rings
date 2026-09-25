@@ -1,6 +1,6 @@
-name: ClaudeUsage
+name: QuotaRings
 options:
-  bundleIdPrefix: com.zentered.claudeusage
+  bundleIdPrefix: com.zentered.quotarings
   deploymentTarget:
     macOS: "14.0"
   createIntermediateGroups: true
@@ -13,22 +13,22 @@ settings:
     CODE_SIGN_IDENTITY: "-"
     CODE_SIGN_STYLE: Manual
     DEVELOPMENT_TEAM: ""
-    ENABLE_HARDENED_RUNTIME: NO
+    ENABLE_HARDENED_RUNTIME: YES
 targets:
-  ClaudeUsage:
+  QuotaRings:
     type: application
     platform: macOS
     sources:
       - Sources/App
       - Sources/Shared
     dependencies:
-      - target: ClaudeUsageWidget
+      - target: QuotaRingsWidget
         embed: true
         codeSign: true
     info:
       path: Sources/App/Info.plist
       properties:
-        CFBundleDisplayName: Claude Usage
+        CFBundleDisplayName: Quota Rings
         LSUIElement: true
         LSApplicationCategoryType: public.app-category.developer-tools
     entitlements:
@@ -37,9 +37,9 @@ targets:
         com.apple.security.app-sandbox: false
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.zentered.claudeusage
-        PRODUCT_NAME: Claude Usage
-  ClaudeUsageWidget:
+        PRODUCT_BUNDLE_IDENTIFIER: com.zentered.quotarings
+        PRODUCT_NAME: Quota Rings
+  QuotaRingsWidget:
     type: app-extension
     platform: macOS
     sources:
@@ -48,7 +48,7 @@ targets:
     info:
       path: Sources/Widget/Info.plist
       properties:
-        CFBundleDisplayName: Claude Usage
+        CFBundleDisplayName: Quota Rings
         NSExtension:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
     entitlements:
@@ -57,7 +57,7 @@ targets:
         com.apple.security.app-sandbox: true
         # Read-only access to the snapshot the host app writes.
         com.apple.security.temporary-exception.files.home-relative-path.read-only:
-          - /Library/Application Support/ClaudeUsageWidget/
+          - /Library/Application Support/QuotaRings/
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.zentered.claudeusage.widget
+        PRODUCT_BUNDLE_IDENTIFIER: com.zentered.quotarings.widget

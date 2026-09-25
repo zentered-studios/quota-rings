@@ -14,8 +14,9 @@ enum UsageFetcher {
 
         var errorDescription: String? {
             switch self {
-            case .noCredentials: return "No Claude Code login found. Run `claude` and log in."
-            case .tokenExpired, .unauthorized: return "Token expired. Run `claude` once to refresh it."
+            case .noCredentials: return "No Claude Code login in the Keychain"
+            case .tokenExpired: return "Stored token expired"
+            case .unauthorized: return "Usage request was rejected (HTTP 401/403)"
             case .http(let code): return "Usage request failed (HTTP \(code))"
             }
         }
@@ -23,12 +24,30 @@ enum UsageFetcher {
 
     static let endpoint = URL(string: "https://api.anthropic.com/api/oauth/usage")!
 
+    static func status(for error: Error) -> UsageStatus {
+        switch error {
+        case FetchError.noCredentials: return .notSignedIn
+        case FetchError.tokenExpired, FetchError.unauthorized: return .expired
+        case UsageParser.ParseError.noLimits: return .noPlan
+        case let urlError as URLError:
+            switch urlError.code {
+            case .notConnectedToInternet, .networkConnectionLost, .timedOut,
+                 .cannotFindHost, .cannotConnectToHost, .dnsLookupFailed:
+                return .offline
+            default:
+                return .failed
+            }
+        default:
+            return .failed
+        }
+    }
+
     static func fetch() async throws -> [UsageLimit] {
         let token = try readToken()
         var request = URLRequest(url: endpoint, timeoutInterval: 20)
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         request.setValue("oauth-2025-04-20", forHTTPHeaderField: "anthropic-beta")
-        request.setValue("claude-usage-widget/0.1", forHTTPHeaderField: "User-Agent")
+        request.setValue("quota-rings/0.1", forHTTPHeaderField: "User-Agent")
 
         let (data, response) = try await URLSession.shared.data(for: request)
         let status = (response as? HTTPURLResponse)?.statusCode ?? 0

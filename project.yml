@@ -1,0 +1,63 @@
+name: ClaudeUsage
+options:
+  bundleIdPrefix: com.zentered.claudeusage
+  deploymentTarget:
+    macOS: "14.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    # Sign ad hoc so the project builds without a developer team.
+    CODE_SIGN_IDENTITY: "-"
+    CODE_SIGN_STYLE: Manual
+    DEVELOPMENT_TEAM: ""
+    ENABLE_HARDENED_RUNTIME: NO
+targets:
+  ClaudeUsage:
+    type: application
+    platform: macOS
+    sources:
+      - Sources/App
+      - Sources/Shared
+    dependencies:
+      - target: ClaudeUsageWidget
+        embed: true
+        codeSign: true
+    info:
+      path: Sources/App/Info.plist
+      properties:
+        CFBundleDisplayName: Claude Usage
+        LSUIElement: true
+        LSApplicationCategoryType: public.app-category.developer-tools
+    entitlements:
+      path: Sources/App/App.entitlements
+      properties:
+        com.apple.security.app-sandbox: false
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.zentered.claudeusage
+        PRODUCT_NAME: Claude Usage
+  ClaudeUsageWidget:
+    type: app-extension
+    platform: macOS
+    sources:
+      - Sources/Widget
+      - Sources/Shared
+    info:
+      path: Sources/Widget/Info.plist
+      properties:
+        CFBundleDisplayName: Claude Usage
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    entitlements:
+      path: Sources/Widget/Widget.entitlements
+      properties:
+        com.apple.security.app-sandbox: true
+        # Read-only access to the snapshot the host app writes.
+        com.apple.security.temporary-exception.files.home-relative-path.read-only:
+          - /Library/Application Support/ClaudeUsageWidget/
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.zentered.claudeusage.widget

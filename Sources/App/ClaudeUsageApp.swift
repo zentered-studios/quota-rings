@@ -4,7 +4,8 @@ import WidgetKit
 
 @main
 struct ClaudeUsageApp: App {
-    @StateObject private var model = UsageModel()
+    @NSApplicationDelegateAdaptor private var delegate: AppDelegate
+    @StateObject private var model = UsageModel.shared
 
     var body: some Scene {
         MenuBarExtra {
@@ -15,19 +16,35 @@ struct ClaudeUsageApp: App {
     }
 }
 
+final class AppDelegate: NSObject, NSApplicationDelegate {
+    /// Clicking the desktop widget opens the running app. Treat that as "refresh now".
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        Task { await UsageModel.shared.refresh() }
+        return false
+    }
+}
+
 @MainActor
 final class UsageModel: ObservableObject {
+    static let shared = UsageModel()
     static let pollInterval: TimeInterval = 5 * 60
 
     @Published private(set) var snapshot: UsageSnapshot?
     @Published var launchAtLogin = SMAppService.mainApp.status == .enabled
 
     private var timer: Timer?
+    private var wakeObserver: NSObjectProtocol?
 
-    init() {
+    private init() {
         snapshot = SnapshotStore.load()
         Task { await refresh() }
         timer = Timer.scheduledTimer(withTimeInterval: Self.pollInterval, repeats: true) { [weak self] _ in
+            Task { await self?.refresh() }
+        }
+        // Fetch right after wake instead of waiting for the next tick.
+        wakeObserver = NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didWakeNotification, object: nil, queue: .main
+        ) { [weak self] _ in
             Task { await self?.refresh() }
         }
     }

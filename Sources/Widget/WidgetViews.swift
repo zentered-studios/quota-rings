@@ -96,32 +96,44 @@ private struct Header: View {
     }
 }
 
-// MARK: - Small: concentric rings with a legend
+// MARK: - Small: concentric rings beside a stacked legend
 
 private struct SmallLayout: View {
     let limits: [UsageLimit]
     let now: Date
 
+    /// The limit closest to running out. Its reset time is the one worth showing.
+    private var tightest: UsageLimit? { limits.max { $0.percent < $1.percent } }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 0) {
-                Spacer(minLength: 0)
+            HStack(alignment: .center, spacing: 10) {
                 ConcentricRings(limits: limits)
-                    .frame(width: 72, height: 72)
-                Spacer(minLength: 0)
-            }
-            VStack(alignment: .leading, spacing: 3) {
-                ForEach(limits) { limit in
-                    HStack(spacing: 5) {
-                        Circle().fill(Palette.color(for: limit)).frame(width: 6, height: 6)
-                        Text(limit.label)
-                            .font(.system(size: 11, weight: .medium, design: .rounded))
-                            .foregroundStyle(Palette.secondary)
-                            .lineLimit(1)
-                        Spacer(minLength: 2)
-                        PercentText(limit: limit, size: 12)
+                    .frame(width: 68, height: 68)
+                VStack(alignment: .leading, spacing: 5) {
+                    ForEach(limits) { limit in
+                        VStack(alignment: .leading, spacing: 0) {
+                            Text(limit.label.uppercased())
+                                .font(.system(size: 8, weight: .bold, design: .rounded))
+                                .tracking(0.5)
+                                .foregroundStyle(Palette.color(for: limit))
+                                .lineLimit(1)
+                            PercentText(limit: limit, size: 15)
+                        }
                     }
                 }
+                Spacer(minLength: 0)
+            }
+            if let tightest, let reset = tightest.resetsAt {
+                HStack(spacing: 4) {
+                    Image(systemName: "arrow.clockwise")
+                        .font(.system(size: 8, weight: .bold))
+                    Text("\(tightest.label) resets in \(shortDuration(from: now, to: reset))")
+                        .font(.system(size: 10, weight: .medium, design: .rounded))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                }
+                .foregroundStyle(Palette.secondary)
             }
         }
     }

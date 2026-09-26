@@ -47,26 +47,24 @@ let cases: [(String, WidgetSize, UsageSnapshot?, CGSize)] = [
     ("medium-not-running", .medium, nil, medium),
 ]
 
-/// The menu bar icon at several usage levels, on light and dark bars, scaled up 6x.
-struct MenuBarIconSheet: View {
-    let levels: [[Double]] = [[0, 0, 0], [15, 64, 29], [42, 71, 38], [97, 99, 30], [100, 100, 100]]
+/// Menu bar titles for several states, on light and dark bars, scaled up 3x.
+struct MenuBarSheet: View {
+    let titles = [
+        UsageSnapshot.menuBarTitle(for: data),
+        UsageSnapshot.menuBarTitle(for: variant { $0.codex = nil }),
+        UsageSnapshot.menuBarTitle(for: variant { $0.limits = [] }),
+        UsageSnapshot.menuBarTitle(for: nil),
+    ]
 
     var body: some View {
         VStack(spacing: 0) {
             ForEach([Color.white, Color.black], id: \.self) { bar in
                 HStack(spacing: 24) {
-                    ForEach(levels.indices, id: \.self) { i in
-                        let l = levels[i]
-                        let limits = [
-                            UsageLimit(kind: .session, label: "Session", percent: l[0], resetsAt: nil, severity: "normal"),
-                            UsageLimit(kind: .weekly, label: "Week", percent: l[1], resetsAt: nil, severity: "normal"),
-                            UsageLimit(kind: .model, label: "Model", percent: l[2], resetsAt: nil, severity: "normal"),
-                        ]
-                        Image(nsImage: MenuBarIcon.image(for: limits))
-                            .renderingMode(.template)
-                            .foregroundStyle(bar == .white ? Color.black : Color.white)
+                    ForEach(titles, id: \.self) { title in
+                        Text(title).font(.system(size: 13, weight: .medium))
                     }
                 }
+                .foregroundStyle(bar == .white ? Color.black : Color.white)
                 .padding(8)
                 .background(bar)
             }
@@ -75,11 +73,11 @@ struct MenuBarIconSheet: View {
 }
 
 @MainActor func render() throws {
-    let icons = ImageRenderer(content: MenuBarIconSheet())
-    icons.scale = 6
+    let icons = ImageRenderer(content: MenuBarSheet())
+    icons.scale = 3
     if let tiff = icons.nsImage?.tiffRepresentation,
        let png = NSBitmapImageRep(data: tiff)?.representation(using: .png, properties: [:]) {
-        try png.write(to: outDir.appendingPathComponent("menubar-icon.png"))
+        try png.write(to: outDir.appendingPathComponent("menubar.png"))
     }
 
     for (name, size, snapshot, frame) in cases {

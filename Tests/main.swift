@@ -212,6 +212,17 @@ do {
     expect(false, "codex snapshot threw \(error)")
 }
 
+// Menu bar: each tool's tightest limit, Codex only when present.
+expect(UsageSnapshot.menuBarTitle(for: nil) == "Claude --", "menu bar before first fetch")
+expect(UsageSnapshot.menuBarTitle(for: .placeholder) == "Claude 64% · Codex 69%",
+       "menu bar both: \(UsageSnapshot.menuBarTitle(for: .placeholder))")
+var claudeOnly = UsageSnapshot.placeholder
+claudeOnly.codex = []
+expect(UsageSnapshot.menuBarTitle(for: claudeOnly) == "Claude 64%", "menu bar without codex")
+claudeOnly.limits = []
+claudeOnly.codex = UsageSnapshot.placeholder.codex
+expect(UsageSnapshot.menuBarTitle(for: claudeOnly) == "Claude -- · Codex 69%", "menu bar signed out of claude")
+
 if failures == 0 {
     print("All parser tests passed")
 } else {

@@ -11,7 +11,11 @@ let sample = UsageSnapshot(
         UsageLimit(kind: .weekly, label: "Week", percent: 71, resetsAt: now.addingTimeInterval(3 * 86400 + 6 * 3600), severity: "warning"),
         UsageLimit(kind: .model, label: "Fable", percent: 38, resetsAt: now.addingTimeInterval(3 * 86400 + 6 * 3600), severity: "normal"),
     ],
-    fetchedAt: now.addingTimeInterval(-60)
+    fetchedAt: now.addingTimeInterval(-60),
+    codex: [
+        UsageLimit(kind: .session, label: "Session", percent: 18, resetsAt: now.addingTimeInterval(3 * 3600 + 40 * 60), severity: "normal"),
+        UsageLimit(kind: .weekly, label: "Week", percent: 55, resetsAt: now.addingTimeInterval(2 * 86400 + 9 * 3600), severity: "normal"),
+    ]
 )
 var critical = sample
 critical.limits[1].percent = 96
@@ -72,10 +76,7 @@ struct MenuBarMock: View {
         VStack(alignment: .trailing, spacing: 8) {
             HStack(spacing: 18) {
                 Spacer()
-                HStack(spacing: 6) {
-                    Image(nsImage: MenuBarIcon.image(for: sample.limits)).renderingMode(.template)
-                    Text("42% · 71%").font(.system(size: 14, weight: .medium))
-                }
+                Text(UsageSnapshot.menuBarTitle(for: sample)).font(.system(size: 14, weight: .medium))
                 .padding(.horizontal, 8).padding(.vertical, 3)
                 .background(.white.opacity(0.18), in: RoundedRectangle(cornerRadius: 5))
                 Image(systemName: "wifi").font(.system(size: 14))
@@ -88,7 +89,12 @@ struct MenuBarMock: View {
             .foregroundStyle(.white)
 
             VStack(alignment: .leading, spacing: 7) {
+                Text("Claude").foregroundStyle(.white.opacity(0.5))
                 ForEach(sample.limits) { limit in
+                    Text("\(limit.label): \(Int(limit.percent))%  (resets in \(shortDuration(from: now, to: limit.resetsAt!)))")
+                }
+                Text("Codex").foregroundStyle(.white.opacity(0.5))
+                ForEach(sample.codex ?? []) { limit in
                     Text("\(limit.label): \(Int(limit.percent))%  (resets in \(shortDuration(from: now, to: limit.resetsAt!)))")
                 }
                 Text("Updated 9:40").foregroundStyle(.white.opacity(0.5))

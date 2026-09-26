@@ -11,10 +11,7 @@ struct QuotaRingsApp: App {
         MenuBarExtra {
             MenuContent(model: model)
         } label: {
-            Image(nsImage: MenuBarIcon.image(for: model.snapshot?.limits ?? []))
-            if let title = model.menuBarTitle {
-                Text(title)
-            }
+            Text(UsageSnapshot.menuBarTitle(for: model.snapshot))
         }
     }
 }
@@ -59,15 +56,6 @@ final class UsageModel: ObservableObject {
         ) { [weak self] _ in
             Task { await self?.refresh() }
         }
-    }
-
-    /// `session% · week%`, or nil to show the icon alone.
-    var menuBarTitle: String? {
-        guard let limits = snapshot?.limits, !limits.isEmpty else { return nil }
-        let session = limits.first { $0.kind == .session }
-        let weekly = limits.first { $0.kind == .weekly }
-        let parts = [session, weekly].compactMap { $0.map { "\(Int($0.percent.rounded()))%" } }
-        return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
 
     func refresh() async {

@@ -120,7 +120,7 @@ let screens: [(String, AnyView)] = [
     ("01-at-a-glance", AnyView(
         VStack(spacing: 70) {
             Headline(title: "Your plan limits, at a glance.",
-                     subtitle: "Session, weekly and per-model usage on your desktop. Works with Claude Code.")
+                     subtitle: "Claude and Codex limits on your desktop. Works with Claude Code and Codex CLI.")
             HStack(alignment: .center, spacing: 50) {
                 WidgetCard(size: .medium, snapshot: sample, scale: 2)
                 WidgetCard(size: .small, snapshot: sample, scale: 2)

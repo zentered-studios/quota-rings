@@ -2,7 +2,7 @@
 
 Quota Rings collects no data. It sends nothing to its developer and runs without analytics or crash reporting.
 
-Quota Rings has two data sources. You pick one in the menu bar menu.
+Quota Rings reads Claude usage from one of two sources, which you pick in the menu bar menu. It also reads Codex usage when Codex is installed.
 
 ## Claude Code sign-in
 
@@ -15,11 +15,16 @@ Quota Rings has two data sources. You pick one in the menu bar menu.
 - **Stores:** that session key in the app's own Keychain item, `com.zentered.quotarings.claude-ai`, readable on this Mac only. When claude.ai issues a new key, the app replaces the old one. **Sign Out of claude.ai** in the menu deletes it.
 - **Sends:** the same schedule of requests to `https://claude.ai/api/organizations` and `https://claude.ai/api/organizations/{id}/usage`, with that session key.
 
+## Codex
+
+- **Reads:** the newest Codex session logs in `~/.codex/sessions/`, up to 5 files per refresh. The app keeps only the plan limit fields (`rate_limits`) and ignores the rest of each log, including your prompts and code. It never reads `~/.codex/auth.json` or any Codex token.
+- **Sends:** nothing. Codex usage makes no network request.
+
 Anthropic's privacy policy covers the requests to Anthropic's servers.
 
 ## What the app stores on disk
 
-- The latest usage numbers in `~/Library/Application Support/QuotaRings/usage.json`, so the widget can show them. The file holds percentages, reset times, the time of the last fetch and the last error message. It holds no token or session key.
+- The latest Claude and Codex usage numbers in `~/Library/Application Support/QuotaRings/usage.json`, so the widget can show them. The file holds percentages, reset times, the time of the last fetch and the last error message. It holds no token or session key.
 
 ## Contact
 

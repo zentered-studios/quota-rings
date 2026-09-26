@@ -12,25 +12,25 @@ Plan limits on your desktop
 
 ## Promotional text (170)
 
-See your session, weekly and per-model limits before you hit them. A desktop widget and menu bar item that update every 5 minutes.
+See your Claude and Codex limits before you hit them. A desktop widget and menu bar item that update every 5 minutes.
 
 ## Description
 
 Quota Rings shows your coding assistant plan limits on your Mac desktop.
 
-- Session, weekly and per-model limits as rings, each with its reset countdown.
+- Claude and Codex side by side: session, weekly and per-model limits as bars, each with its reset countdown.
 - Small and medium desktop widgets, plus a compact menu bar item.
-- Numbers turn red near the limit.
+- Bars turn amber at 80% and red at 95%.
 - Updates every 5 minutes, after wake, and when you click the widget.
 - Clear status when you are signed out, offline or your sign-in expired. Old numbers dim instead of pretending to be current.
 
-Requirements: macOS 14 or later and a Claude Pro or Max plan. Quota Rings either reads the sign-in that Claude Code already stores on your Mac, or you sign in to claude.ai once in the app. It never changes Claude Code's sign-in.
+Requirements: macOS 14 or later and a Claude Pro or Max plan. Quota Rings either reads the sign-in that Claude Code already stores on your Mac, or you sign in to claude.ai once in the app. It never changes Claude Code's sign-in. Codex usage is optional and comes from the logs Codex CLI writes on your Mac, with no network request.
 
-Quota Rings is an independent app. It is not made, endorsed or supported by Anthropic. Claude and Claude Code are trademarks of Anthropic.
+Quota Rings is an independent app. It is not made, endorsed or supported by Anthropic or OpenAI. Claude and Claude Code are trademarks of Anthropic.
 
 ## Keywords (100)
 
-usage,quota,limits,widget,menu bar,rings,AI,coding,plan,developer,tokens,rate limit
+usage,quota,limits,widget,menu bar,codex,AI,coding,plan,developer,tokens,rate limit
 
 ## Category
 

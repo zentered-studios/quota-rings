@@ -175,13 +175,13 @@ struct MenuContent: View {
                     }
                 }
                 ForEach(snapshot.limits) { limit in
-                    Text("\(limit.label): \(Int(limit.percent.rounded()))%\(resetText(limit))")
+                    Text(menuText(limit))
                 }
             }
             if let codex = snapshot.codex, !codex.isEmpty {
                 Section("Codex") {
                     ForEach(codex) { limit in
-                        Text("\(limit.label): \(Int(limit.percent.rounded()))%\(resetText(limit))")
+                        Text(menuText(limit))
                     }
                 }
             }
@@ -217,8 +217,10 @@ struct MenuContent: View {
             .keyboardShortcut("q")
     }
 
-    private func resetText(_ limit: UsageLimit) -> String {
-        guard let reset = limit.resetsAt else { return "" }
-        return " (resets \(reset.formatted(.relative(presentation: .named))))"
+    /// "Week: 69% (resets in 2 days)".
+    private func menuText(_ limit: UsageLimit) -> String {
+        let percent = "\(limit.label): \(Int(limit.percent.rounded()))%"
+        guard let reset = limit.resetsAt else { return percent }
+        return "\(percent) (resets \(reset.formatted(.relative(presentation: .named))))"
     }
 }

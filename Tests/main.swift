@@ -224,6 +224,39 @@ do {
     let newest = CodexParser.newestLogs(in: root, limit: 2).map(\.lastPathComponent)
     expect(newest == [resumed.lastPathComponent, today.lastPathComponent], "newest logs: \(newest)")
     expect(CodexParser.newestLogs(in: root.appendingPathComponent("missing"), limit: 5).isEmpty, "no sessions folder")
+    let empty = root.appendingPathComponent("empty")
+    try fm.createDirectory(at: empty, withIntermediateDirectories: true)
+    expect(CodexParser.newestLogs(in: empty, limit: 5).isEmpty, "empty sessions folder")
+
+    // A symlink named *.jsonl is not followed, so no file outside the logs is read.
+    let outside = root.appendingPathComponent("outside.json")
+    try Data(codexEvent(prolite).utf8).write(to: outside)
+    let link = root.appendingPathComponent("2026/09/26/rollout-link.jsonl")
+    try fm.createSymbolicLink(at: link, withDestinationURL: outside)
+    expect(!CodexParser.newestLogs(in: root, limit: 10).map(\.lastPathComponent).contains("rollout-link.jsonl"),
+           "symlinked log skipped")
+} catch {
+    expect(false, "codex log lookup threw \(error)")
+}
+
+// Codex: the newest log without limits falls back to the next newest one.
+do {
+    let fm = FileManager.default
+    let root = fm.temporaryDirectory.appendingPathComponent("codex-read-\(UUID().uuidString)")
+    defer { try? fm.removeItem(at: root) }
+    let day = root.appendingPathComponent("2026/09/26")
+    try fm.createDirectory(at: day, withIntermediateDirectories: true)
+    let older = day.appendingPathComponent("rollout-older.jsonl")
+    let newer = day.appendingPathComponent("rollout-newer.jsonl")
+    // The older log ends in a line Codex is still writing.
+    try Data((codexLog + #"{"timestamp":"2026-09-26T17:04:00Z","type":"event_msg","payload":{"type":"token_count","rate_"#).utf8)
+        .write(to: older)
+    try Data(#"{"type":"session_meta","payload":{"id":"new"}}"#.utf8).write(to: newer)
+    try fm.setAttributes([.modificationDate: Date(timeIntervalSince1970: 1000)], ofItemAtPath: older.path)
+    try fm.setAttributes([.modificationDate: Date(timeIntervalSince1970: 2000)], ofItemAtPath: newer.path)
+    let limits = CodexParser.latestLimits(inSessions: root, logs: 5, now: codexNow)
+    expect(limits?.first?.percent == 69, "falls back to the older log past a partial line: \(String(describing: limits))")
+    expect(CodexParser.latestLimits(inSessions: root, logs: 1, now: codexNow) == nil, "stops after the log limit")
 } catch {
     expect(false, "codex log lookup threw \(error)")
 }

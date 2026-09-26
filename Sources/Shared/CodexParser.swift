@@ -55,15 +55,29 @@ enum CodexParser {
         return (minutes, limit)
     }
 
+    /// Limits from the newest of the `logs` most recently written logs that has any.
+    /// A new session has no `rate_limits` until its first response, so older logs are the fallback.
+    static func latestLimits(inSessions sessions: URL, logs: Int, now: Date) -> [UsageLimit]? {
+        for url in newestLogs(in: sessions, limit: logs) {
+            guard let data = try? Data(contentsOf: url, options: .mappedIfSafe) else { continue }
+            if let limits = latestLimits(inLog: data, now: now) { return limits }
+        }
+        return nil
+    }
+
     /// The most recently written session logs under `sessions/YYYY/MM/DD/`, newest first.
     /// Sorts by modification date, not folder, because a resumed session writes to its old file.
     static func newestLogs(in sessions: URL, limit: Int) -> [URL] {
-        let keys: [URLResourceKey] = [.contentModificationDateKey]
-        guard let files = FileManager.default.enumerator(at: sessions, includingPropertiesForKeys: keys,
+        let keys: Set<URLResourceKey> = [.contentModificationDateKey, .isRegularFileKey]
+        guard let files = FileManager.default.enumerator(at: sessions, includingPropertiesForKeys: Array(keys),
                                                          options: .skipsHiddenFiles) else { return [] }
         let logs = files.compactMap { $0 as? URL }
             .filter { $0.pathExtension == "jsonl" }
-            .map { ($0, (try? $0.resourceValues(forKeys: Set(keys)).contentModificationDate) ?? .distantPast) }
+            .compactMap { url -> (URL, Date)? in
+                // A symlink reports false here, so a link out of the logs folder is never read.
+                guard let values = try? url.resourceValues(forKeys: keys), values.isRegularFile == true else { return nil }
+                return (url, values.contentModificationDate ?? .distantPast)
+            }
         return logs.sorted { $0.1 > $1.1 }.prefix(limit).map(\.0)
     }
 

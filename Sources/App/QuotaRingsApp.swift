@@ -131,12 +131,24 @@ final class UsageModel: ObservableObject {
         Task { await refresh() }
     }
 
-    /// The widget only updates while this app runs, so start at login by default.
-    /// The user can turn it off in the menu, and that choice sticks.
+    /// The widget only updates while this app runs, so offer to start at login once.
+    /// The answer sticks; the menu toggle changes it later.
     private func enableLoginItemOnFirstLaunch() {
         guard !UserDefaults.standard.bool(forKey: Self.didSetUpLoginItemKey) else { return }
         UserDefaults.standard.set(true, forKey: Self.didSetUpLoginItemKey)
-        setLaunchAtLogin(true)
+        guard SMAppService.mainApp.status != .enabled else { return }
+        // Ask after launch finishes, so the alert has an app to belong to.
+        DispatchQueue.main.async { [weak self] in
+            let alert = NSAlert()
+            alert.messageText = "Open Quota Rings at login?"
+            alert.informativeText = "The widget only updates while Quota Rings is running. You can change this later in the menu bar menu."
+            alert.addButton(withTitle: "Open at Login")
+            alert.addButton(withTitle: "Not Now")
+            NSApp.activate(ignoringOtherApps: true)
+            if alert.runModal() == .alertFirstButtonReturn {
+                self?.setLaunchAtLogin(true)
+            }
+        }
     }
 
     func setLaunchAtLogin(_ enabled: Bool) {

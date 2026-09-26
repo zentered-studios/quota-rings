@@ -8,7 +8,7 @@ Quota Rings is an independent app. It is not made, endorsed or supported by Anth
 
 ## How it works
 
-- `Quota Rings.app` runs in the menu bar and shows `session% · week%`. Its menu lists every limit with its reset time. It turns on Open at Login the first time it runs.
+- `Quota Rings.app` runs in the menu bar and shows `session% · week%`. Its menu lists every limit with its reset time. The first time it runs, it asks whether to open at login.
 - Every 5 minutes, after wake, and when you click the widget, the app reads Claude Code's OAuth token from the Keychain item `Claude Code-credentials` and calls `GET https://api.anthropic.com/api/oauth/usage`. Claude Code's `/usage` reads the same endpoint.
 - It writes the result to `~/Library/Application Support/QuotaRings/usage.json` and reloads the widget.
 - The widget is sandboxed. It has read-only access to that one folder and no network or Keychain access.

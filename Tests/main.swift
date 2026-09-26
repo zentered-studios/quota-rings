@@ -106,7 +106,7 @@ let unsafeOrgs = ClaudeWebParsing.organizations(from: Data(#"""
 expect(unsafeOrgs.map(\.id) == ["0f8e2c1a-9b7d-4e6f-a5c3-2d1e0f9a8b7c"], "unsafe org ids skipped: \(unsafeOrgs.map(\.id))")
 
 // claude.ai: only claude.ai and its subdomains may supply the session cookie.
-for domain in ["claude.ai", ".claude.ai", "www.claude.ai"] {
+for domain in ["claude.ai", ".claude.ai", "www.claude.ai", "CLAUDE.AI", ".Claude.ai"] {
     expect(ClaudeWebParsing.isClaudeCookieDomain(domain), "\(domain) is claude.ai")
 }
 for domain in ["evilclaude.ai", ".notclaude.ai", "claude.ai.example.com", ""] {

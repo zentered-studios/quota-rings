@@ -42,7 +42,9 @@ enum ClaudeWebParsing {
 
     /// True for cookies that belong to claude.ai: `claude.ai`, `.claude.ai` or a subdomain.
     static func isClaudeCookieDomain(_ domain: String) -> Bool {
-        let host = domain.hasPrefix(".") ? String(domain.dropFirst()) : domain
+        // Domain names are case-insensitive.
+        let lowered = domain.lowercased()
+        let host = lowered.hasPrefix(".") ? String(lowered.dropFirst()) : lowered
         return host == "claude.ai" || host.hasSuffix(".claude.ai")
     }
 

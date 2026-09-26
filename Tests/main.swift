@@ -235,6 +235,13 @@ do {
     try fm.createSymbolicLink(at: link, withDestinationURL: outside)
     expect(!CodexParser.newestLogs(in: root, limit: 10).map(\.lastPathComponent).contains("rollout-link.jsonl"),
            "symlinked log skipped")
+    // Neither a folder named *.jsonl nor a link to a missing file is a log.
+    try fm.createDirectory(at: root.appendingPathComponent("2026/09/26/rollout-folder.jsonl"), withIntermediateDirectories: true)
+    try fm.createSymbolicLink(at: root.appendingPathComponent("2026/09/26/rollout-broken.jsonl"),
+                              withDestinationURL: root.appendingPathComponent("gone.json"))
+    let names = CodexParser.newestLogs(in: root, limit: 10).map(\.lastPathComponent)
+    expect(!names.contains("rollout-folder.jsonl") && !names.contains("rollout-broken.jsonl"),
+           "folders and broken links skipped: \(names)")
 } catch {
     expect(false, "codex log lookup threw \(error)")
 }

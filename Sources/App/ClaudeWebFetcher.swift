@@ -99,11 +99,16 @@ enum SessionKeyStore {
     static func save(_ key: String) {
         let data = Data(key.utf8)
         let update = [kSecValueData as String: data]
-        if SecItemUpdate(query as CFDictionary, update as CFDictionary) == errSecItemNotFound {
+        var status = SecItemUpdate(query as CFDictionary, update as CFDictionary)
+        if status == errSecItemNotFound {
             var add = query
             add[kSecValueData as String] = data
             add[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
-            SecItemAdd(add as CFDictionary, nil)
+            status = SecItemAdd(add as CFDictionary, nil)
+        }
+        if status != errSecSuccess {
+            // The next fetch then reports "Not signed in"; this line says why.
+            NSLog("Quota Rings: could not save the claude.ai session to the Keychain (OSStatus \(status))")
         }
     }
 

@@ -31,7 +31,7 @@ The app never refreshes the Claude Code token. Refreshing would rotate the refre
 
 ### Codex
 
-Codex needs no setup. After each model response, Codex CLI writes a `token_count` event with the account's `rate_limits` to its session log in `~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl`. Quota Rings reads the newest such event from the 5 most recent logs. It makes no network request and never reads `~/.codex/auth.json`.
+Codex needs no setup. After each model response, Codex CLI writes a `token_count` event with the account's `rate_limits` to its session log in `~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl`. Quota Rings reads the newest such event from the 5 most recently written logs, sorted by modification date, so a resumed session in an older folder still counts. It makes no network request and never reads `~/.codex/auth.json`.
 
 - The numbers change only when Codex runs, so the newest event is current.
 - A window whose `resets_at` has passed shows 0% until Codex logs again.

@@ -205,6 +205,29 @@ expect(CodexParser.latestLimits(inLog: Data(codexLog.prefix(80).utf8), now: code
 expect(CodexParser.latestLimits(inLog: Data(), now: codexNow) == nil, "empty log is nil")
 expect(CodexParser.label(minutes: 1440) == "1d" && CodexParser.label(minutes: 120) == "2h", "other window labels")
 
+// Codex: the newest logs by modification date, wherever their day folder is.
+do {
+    let fm = FileManager.default
+    let root = fm.temporaryDirectory.appendingPathComponent("codex-sessions-\(UUID().uuidString)")
+    defer { try? fm.removeItem(at: root) }
+    func log(_ path: String, modified: TimeInterval) throws -> URL {
+        let url = root.appendingPathComponent(path)
+        try fm.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try Data().write(to: url)
+        try fm.setAttributes([.modificationDate: Date(timeIntervalSince1970: modified)], ofItemAtPath: url.path)
+        return url
+    }
+    let resumed = try log("2026/09/01/rollout-resumed.jsonl", modified: 3000)
+    let today = try log("2026/09/26/rollout-today.jsonl", modified: 2000)
+    _ = try log("2026/09/25/rollout-yesterday.jsonl", modified: 1000)
+    _ = try log("2026/09/26/notes.txt", modified: 4000)
+    let newest = CodexParser.newestLogs(in: root, limit: 2).map(\.lastPathComponent)
+    expect(newest == [resumed.lastPathComponent, today.lastPathComponent], "newest logs: \(newest)")
+    expect(CodexParser.newestLogs(in: root.appendingPathComponent("missing"), limit: 5).isEmpty, "no sessions folder")
+} catch {
+    expect(false, "codex log lookup threw \(error)")
+}
+
 // Snapshots written before Codex support still load, without Codex.
 do {
     let old = #"{"limits":[],"fetchedAt":"2026-09-26T17:00:00Z"}"#

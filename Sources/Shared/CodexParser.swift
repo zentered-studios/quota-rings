@@ -55,6 +55,18 @@ enum CodexParser {
         return (minutes, limit)
     }
 
+    /// The most recently written session logs under `sessions/YYYY/MM/DD/`, newest first.
+    /// Sorts by modification date, not folder, because a resumed session writes to its old file.
+    static func newestLogs(in sessions: URL, limit: Int) -> [URL] {
+        let keys: [URLResourceKey] = [.contentModificationDateKey]
+        guard let files = FileManager.default.enumerator(at: sessions, includingPropertiesForKeys: keys,
+                                                         options: .skipsHiddenFiles) else { return [] }
+        let logs = files.compactMap { $0 as? URL }
+            .filter { $0.pathExtension == "jsonl" }
+            .map { ($0, (try? $0.resourceValues(forKeys: Set(keys)).contentModificationDate) ?? .distantPast) }
+        return logs.sorted { $0.1 > $1.1 }.prefix(limit).map(\.0)
+    }
+
     /// "Session" for the 5 hour window, "Week" for 7 days, otherwise the length.
     static func label(minutes: Int) -> String {
         switch minutes {

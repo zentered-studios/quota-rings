@@ -98,6 +98,12 @@ expect(ClaudeWebParsing.planOrganization(in: [orgs[0]]) == nil, "API-only org ha
 expect(ClaudeWebParsing.planOrganization(in: ClaudeWebParsing.organizations(from: Data(#"[{"uuid":"x"}]"#.utf8)))?.id == "x",
        "org without capabilities is still used")
 expect(ClaudeWebParsing.organizations(from: Data("<html>".utf8)).isEmpty, "HTML is not an org list")
+// The id goes into a URL path, so anything but UUID characters is rejected.
+let unsafeOrgs = ClaudeWebParsing.organizations(from: Data(#"""
+[{"uuid": "../../account", "capabilities": ["chat"]}, {"uuid": "a1b2-c3?x=1", "capabilities": ["chat"]},
+ {"uuid": "0f8e2c1a-9b7d-4e6f-a5c3-2d1e0f9a8b7c", "capabilities": ["chat"]}]
+"""#.utf8))
+expect(unsafeOrgs.map(\.id) == ["0f8e2c1a-9b7d-4e6f-a5c3-2d1e0f9a8b7c"], "unsafe org ids skipped: \(unsafeOrgs.map(\.id))")
 
 // claude.ai: Cloudflare challenge vs. a real auth failure.
 expect(ClaudeWebParsing.isCloudflareChallenge(status: 403, contentType: "text/html; charset=UTF-8", body: Data()),

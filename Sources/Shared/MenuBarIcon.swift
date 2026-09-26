@@ -44,6 +44,8 @@ enum MenuBarIcon {
             return true
         }
         image.isTemplate = true
+        // Usage only moves one way between resets, so a small cache covers a session.
+        if cache.count >= 64 { cache.removeAll() }
         image.accessibilityDescription = "Session \(percents[0])%, week \(percents[1])%, model \(percents[2])%"
         cache[percents] = image
         return image

@@ -110,6 +110,9 @@ final class UsageModel: ObservableObject {
         guard source != dataSource else { return }
         dataSource = source
         UserDefaults.standard.set(source.rawValue, forKey: Self.dataSourceKey)
+        // Drop any fetch still running for the previous source. The sign-in branch below
+        // does not start a refresh of its own, so this cannot wait for refresh() to do it.
+        refreshGeneration += 1
         // Numbers from the other source may belong to another account.
         snapshot?.limits = []
         if source == .claudeAI && SessionKeyStore.load() == nil {
@@ -135,8 +138,10 @@ final class UsageModel: ObservableObject {
     /// The answer sticks; the menu toggle changes it later.
     private func enableLoginItemOnFirstLaunch() {
         guard !UserDefaults.standard.bool(forKey: Self.didSetUpLoginItemKey) else { return }
-        UserDefaults.standard.set(true, forKey: Self.didSetUpLoginItemKey)
-        guard SMAppService.mainApp.status != .enabled else { return }
+        guard SMAppService.mainApp.status != .enabled else {
+            UserDefaults.standard.set(true, forKey: Self.didSetUpLoginItemKey)
+            return
+        }
         // Ask after launch finishes, so the alert has an app to belong to.
         DispatchQueue.main.async { [weak self] in
             let alert = NSAlert()
@@ -145,7 +150,10 @@ final class UsageModel: ObservableObject {
             alert.addButton(withTitle: "Open at Login")
             alert.addButton(withTitle: "Not Now")
             NSApp.activate(ignoringOtherApps: true)
-            if alert.runModal() == .alertFirstButtonReturn {
+            let response = alert.runModal()
+            // Only a real answer counts, so quitting with the alert open asks again next launch.
+            UserDefaults.standard.set(true, forKey: Self.didSetUpLoginItemKey)
+            if response == .alertFirstButtonReturn {
                 self?.setLaunchAtLogin(true)
             }
         }

@@ -40,6 +40,12 @@ enum ClaudeWebParsing {
         return head.contains("just a moment") || head.contains("cf-chl") || head.contains("cloudflare")
     }
 
+    /// True for cookies that belong to claude.ai: `claude.ai`, `.claude.ai` or a subdomain.
+    static func isClaudeCookieDomain(_ domain: String) -> Bool {
+        let host = domain.hasPrefix(".") ? String(domain.dropFirst()) : domain
+        return host == "claude.ai" || host.hasSuffix(".claude.ai")
+    }
+
     /// The `sessionKey` value from a `Set-Cookie` response, if claude.ai rotated it.
     static func renewedSessionKey(headers: [String: String], url: URL) -> String? {
         HTTPCookie.cookies(withResponseHeaderFields: headers, for: url)

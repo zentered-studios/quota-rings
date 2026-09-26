@@ -64,7 +64,7 @@ final class SignInWindowController: NSWindowController, WKNavigationDelegate, NS
         webView.configuration.websiteDataStore.httpCookieStore.getAllCookies { [weak self] cookies in
             guard let self, !self.didSignIn,
                   let cookie = cookies.first(where: {
-                      $0.name == "sessionKey" && $0.domain.hasSuffix("claude.ai") && !$0.value.isEmpty
+                      $0.name == "sessionKey" && ClaudeWebParsing.isClaudeCookieDomain($0.domain) && !$0.value.isEmpty
                   })
             else { return }
             self.didSignIn = true

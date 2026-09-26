@@ -105,6 +105,14 @@ let unsafeOrgs = ClaudeWebParsing.organizations(from: Data(#"""
 """#.utf8))
 expect(unsafeOrgs.map(\.id) == ["0f8e2c1a-9b7d-4e6f-a5c3-2d1e0f9a8b7c"], "unsafe org ids skipped: \(unsafeOrgs.map(\.id))")
 
+// claude.ai: only claude.ai and its subdomains may supply the session cookie.
+for domain in ["claude.ai", ".claude.ai", "www.claude.ai"] {
+    expect(ClaudeWebParsing.isClaudeCookieDomain(domain), "\(domain) is claude.ai")
+}
+for domain in ["evilclaude.ai", ".notclaude.ai", "claude.ai.example.com", ""] {
+    expect(!ClaudeWebParsing.isClaudeCookieDomain(domain), "\(domain) is not claude.ai")
+}
+
 // claude.ai: Cloudflare challenge vs. a real auth failure.
 expect(ClaudeWebParsing.isCloudflareChallenge(status: 403, contentType: "text/html; charset=UTF-8", body: Data()),
        "403 HTML is a challenge")

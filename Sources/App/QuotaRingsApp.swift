@@ -11,7 +11,7 @@ struct QuotaRingsApp: App {
         MenuBarExtra {
             MenuContent(model: model)
         } label: {
-            Image(nsImage: MenuBarIcon.image)
+            Image(nsImage: MenuBarIcon.image(for: model.snapshot?.limits ?? []))
             if let title = model.menuBarTitle {
                 Text(title)
             }
@@ -143,26 +143,4 @@ struct MenuContent: View {
         guard let reset = limit.resetsAt else { return "" }
         return " (resets \(reset.formatted(.relative(presentation: .named))))"
     }
-}
-
-/// Three concentric arcs drawn as a template image so it follows the menu bar tint.
-enum MenuBarIcon {
-    static let image: NSImage = {
-        let size = NSSize(width: 16, height: 16)
-        let image = NSImage(size: size, flipped: false) { rect in
-            let center = NSPoint(x: rect.midX, y: rect.midY)
-            let arcs: [(radius: CGFloat, sweep: CGFloat)] = [(6.6, 290), (4.3, 220), (2.0, 150)]
-            for arc in arcs {
-                let path = NSBezierPath()
-                path.appendArc(withCenter: center, radius: arc.radius, startAngle: 90, endAngle: 90 - arc.sweep, clockwise: true)
-                path.lineWidth = 1.7
-                path.lineCapStyle = .round
-                NSColor.black.setStroke()
-                path.stroke()
-            }
-            return true
-        }
-        image.isTemplate = true
-        return image
-    }()
 }

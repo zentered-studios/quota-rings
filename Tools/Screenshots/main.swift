@@ -73,7 +73,7 @@ struct MenuBarMock: View {
             HStack(spacing: 18) {
                 Spacer()
                 HStack(spacing: 6) {
-                    Image(nsImage: menuIcon).renderingMode(.template)
+                    Image(nsImage: MenuBarIcon.image(for: sample.limits)).renderingMode(.template)
                     Text("42% · 71%").font(.system(size: 14, weight: .medium))
                 }
                 .padding(.horizontal, 8).padding(.vertical, 3)
@@ -107,24 +107,6 @@ struct MenuBarMock: View {
             .shadow(color: .black.opacity(0.4), radius: 20, y: 10)
             .padding(.trailing, 150)
         }
-    }
-
-    /// Same drawing as MenuBarIcon in the app target.
-    private var menuIcon: NSImage {
-        let image = NSImage(size: NSSize(width: 16, height: 16), flipped: false) { rect in
-            let center = NSPoint(x: rect.midX, y: rect.midY)
-            for arc in [(6.6, 290.0), (4.3, 220.0), (2.0, 150.0)] {
-                let path = NSBezierPath()
-                path.appendArc(withCenter: center, radius: arc.0, startAngle: 90, endAngle: 90 - arc.1, clockwise: true)
-                path.lineWidth = 1.7
-                path.lineCapStyle = .round
-                NSColor.black.setStroke()
-                path.stroke()
-            }
-            return true
-        }
-        image.isTemplate = true
-        return image
     }
 }
 

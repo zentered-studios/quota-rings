@@ -14,6 +14,8 @@ final class SignInWindowController: NSWindowController, WKNavigationDelegate, NS
     private let webView: WKWebView
     private let onSignIn: () -> Void
     private var pollTimer: Timer?
+    /// The poll and a page load can both find the cookie. Only the first one counts.
+    private var didSignIn = false
 
     static func show(onSignIn: @escaping () -> Void) {
         if let current {
@@ -60,11 +62,12 @@ final class SignInWindowController: NSWindowController, WKNavigationDelegate, NS
 
     private func checkForSession() {
         webView.configuration.websiteDataStore.httpCookieStore.getAllCookies { [weak self] cookies in
-            guard let self,
+            guard let self, !self.didSignIn,
                   let cookie = cookies.first(where: {
                       $0.name == "sessionKey" && $0.domain.hasSuffix("claude.ai") && !$0.value.isEmpty
                   })
             else { return }
+            self.didSignIn = true
             SessionKeyStore.save(cookie.value)
             self.finish()
             self.onSignIn()

@@ -42,6 +42,9 @@ final class UsageModel: ObservableObject {
 
     private var timer: Timer?
     private var wakeObserver: NSObjectProtocol?
+    /// Bumped by every refresh. A fetch that finishes after a newer one started is dropped,
+    /// so a slow request cannot overwrite fresher numbers or another source's result.
+    private var refreshGeneration = 0
 
     private init() {
         snapshot = SnapshotStore.load()
@@ -68,12 +71,22 @@ final class UsageModel: ObservableObject {
     }
 
     func refresh() async {
-        var next: UsageSnapshot
+        refreshGeneration += 1
+        let generation = refreshGeneration
         let source = dataSource
+        let result: Result<[UsageLimit], Error>
         do {
-            let limits = try await source.fetch()
-            next = UsageSnapshot(limits: limits, fetchedAt: Date())
+            result = .success(try await source.fetch())
         } catch {
+            result = .failure(error)
+        }
+        guard generation == refreshGeneration else { return }
+
+        var next: UsageSnapshot
+        switch result {
+        case .success(let limits):
+            next = UsageSnapshot(limits: limits, fetchedAt: Date())
+        case .failure(let error):
             let status = source.status(for: error)
             // Keep the last good values unless the account state changed under them.
             next = snapshot ?? UsageSnapshot(limits: [], fetchedAt: Date())

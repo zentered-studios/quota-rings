@@ -34,7 +34,7 @@ struct QuotaRingsWidget: Widget {
                 .containerBackground(for: .widget) { WidgetBackground() }
         }
         .configurationDisplayName("Quota Rings")
-        .description("Session, weekly and per-model plan usage.")
+        .description("Claude and Codex plan usage.")
         .supportedFamilies([.systemSmall, .systemMedium])
     }
 }

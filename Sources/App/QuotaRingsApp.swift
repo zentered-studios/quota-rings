@@ -11,10 +11,7 @@ struct QuotaRingsApp: App {
         MenuBarExtra {
             MenuContent(model: model)
         } label: {
-            Image(nsImage: MenuBarIcon.image(for: model.snapshot?.limits ?? []))
-            if let title = model.menuBarTitle {
-                Text(title)
-            }
+            Text(UsageSnapshot.menuBarTitle(for: model.snapshot))
         }
     }
 }
@@ -61,15 +58,6 @@ final class UsageModel: ObservableObject {
         }
     }
 
-    /// `session% · week%`, or nil to show the icon alone.
-    var menuBarTitle: String? {
-        guard let limits = snapshot?.limits, !limits.isEmpty else { return nil }
-        let session = limits.first { $0.kind == .session }
-        let weekly = limits.first { $0.kind == .weekly }
-        let parts = [session, weekly].compactMap { $0.map { "\(Int($0.percent.rounded()))%" } }
-        return parts.isEmpty ? nil : parts.joined(separator: " · ")
-    }
-
     func refresh() async {
         refreshGeneration += 1
         let generation = refreshGeneration
@@ -80,6 +68,7 @@ final class UsageModel: ObservableObject {
         } catch {
             result = .failure(error)
         }
+        let codex = await Task.detached { CodexReader.read() }.value
         guard generation == refreshGeneration else { return }
 
         var next: UsageSnapshot
@@ -95,6 +84,7 @@ final class UsageModel: ObservableObject {
             next.statusDetail = source.detail(for: status, error: error)
             next.error = error.localizedDescription
         }
+        next.codex = codex
         hasClaudeAISession = SessionKeyStore.load() != nil
         snapshot = next
         do {
@@ -176,18 +166,26 @@ struct MenuContent: View {
 
     var body: some View {
         if let snapshot = model.snapshot {
-            if let status = snapshot.status {
-                Label(status.title, systemImage: status.symbol)
-                if let detail = snapshot.detailText { Text(detail) }
-                if let error = snapshot.error, status == .failed {
-                    Text(error)
+            Section("Claude") {
+                if let status = snapshot.status {
+                    Label(status.title, systemImage: status.symbol)
+                    if let detail = snapshot.detailText { Text(detail) }
+                    if let error = snapshot.error, status == .failed {
+                        Text(error)
+                    }
                 }
-                Divider()
+                ForEach(snapshot.limits) { limit in
+                    Text(menuText(limit))
+                }
             }
-            ForEach(snapshot.limits) { limit in
-                Text("\(limit.label): \(Int(limit.percent.rounded()))%\(resetText(limit))")
+            if let codex = snapshot.codex, !codex.isEmpty {
+                Section("Codex") {
+                    ForEach(codex) { limit in
+                        Text(menuText(limit))
+                    }
+                }
             }
-            if !snapshot.limits.isEmpty {
+            if !snapshot.limits.isEmpty || snapshot.codex?.isEmpty == false {
                 Text("Updated \(snapshot.fetchedAt.formatted(date: .omitted, time: .shortened))")
                 Divider()
             }
@@ -219,8 +217,10 @@ struct MenuContent: View {
             .keyboardShortcut("q")
     }
 
-    private func resetText(_ limit: UsageLimit) -> String {
-        guard let reset = limit.resetsAt else { return "" }
-        return " (resets \(reset.formatted(.relative(presentation: .named))))"
+    /// "Week: 69% (resets in 2 days)".
+    private func menuText(_ limit: UsageLimit) -> String {
+        let percent = "\(limit.label): \(Int(limit.percent.rounded()))%"
+        guard let reset = limit.resetsAt else { return percent }
+        return "\(percent) (resets \(reset.formatted(.relative(presentation: .named))))"
     }
 }

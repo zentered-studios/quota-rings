@@ -6,13 +6,21 @@ import SwiftUI
 let outDir = URL(fileURLWithPath: CommandLine.arguments.dropFirst().first ?? "build/render", isDirectory: true)
 try FileManager.default.createDirectory(at: outDir, withIntermediateDirectories: true)
 
-let data = SnapshotStore.load().flatMap { $0.limits.isEmpty ? nil : $0 } ?? .placeholder
+var data = SnapshotStore.load().flatMap { $0.limits.isEmpty ? nil : $0 } ?? .placeholder
+data.status = nil
+if data.codex == nil { data.codex = UsageSnapshot.placeholder.codex }
+
+func variant(_ change: (inout UsageSnapshot) -> Void) -> UsageSnapshot {
+    var s = data
+    change(&s)
+    return s
+}
 
 func withStatus(_ status: UsageStatus, keepLimits: Bool) -> UsageSnapshot {
-    var s = data
-    s.status = status
-    if !keepLimits { s.limits = [] }
-    return s
+    variant {
+        $0.status = status
+        if !keepLimits { $0.limits = [] }
+    }
 }
 
 let small = CGSize(width: 170, height: 170)
@@ -28,30 +36,35 @@ let cases: [(String, WidgetSize, UsageSnapshot?, CGSize)] = [
     ("medium-not-signed-in", .medium, withStatus(.notSignedIn, keepLimits: false), medium),
     ("small-no-plan", .small, withStatus(.noPlan, keepLimits: false), small),
     ("small-expired-empty", .small, withStatus(.expired, keepLimits: false), small),
+    ("small-claude-only", .small, variant { $0.codex = nil }, small),
+    ("medium-claude-only", .medium, variant { $0.codex = nil }, medium),
+    ("small-critical", .small, variant { $0.codex?[0].percent = 97; $0.limits[0].percent = 84 }, small),
+    ("medium-critical", .medium, variant { $0.codex?[0].percent = 97; $0.limits[0].percent = 84 }, medium),
+    ("small-stale", .small, variant { $0.fetchedAt = Date().addingTimeInterval(-3600) }, small),
+    ("small-not-signed-in-codex", .small, variant { $0.limits = []; $0.status = .notSignedIn }, small),
+    ("medium-not-signed-in-codex", .medium, variant { $0.limits = []; $0.status = .notSignedIn }, medium),
     ("small-not-running", .small, nil, small),
     ("medium-not-running", .medium, nil, medium),
 ]
 
-/// The menu bar icon at several usage levels, on light and dark bars, scaled up 6x.
-struct MenuBarIconSheet: View {
-    let levels: [[Double]] = [[0, 0, 0], [15, 64, 29], [42, 71, 38], [97, 99, 30], [100, 100, 100]]
+/// Menu bar titles for several states, on light and dark bars, scaled up 3x.
+struct MenuBarSheet: View {
+    let titles = [
+        UsageSnapshot.menuBarTitle(for: data),
+        UsageSnapshot.menuBarTitle(for: variant { $0.codex = nil }),
+        UsageSnapshot.menuBarTitle(for: variant { $0.limits = [] }),
+        UsageSnapshot.menuBarTitle(for: nil),
+    ]
 
     var body: some View {
         VStack(spacing: 0) {
             ForEach([Color.white, Color.black], id: \.self) { bar in
                 HStack(spacing: 24) {
-                    ForEach(levels.indices, id: \.self) { i in
-                        let l = levels[i]
-                        let limits = [
-                            UsageLimit(kind: .session, label: "Session", percent: l[0], resetsAt: nil, severity: "normal"),
-                            UsageLimit(kind: .weekly, label: "Week", percent: l[1], resetsAt: nil, severity: "normal"),
-                            UsageLimit(kind: .model, label: "Model", percent: l[2], resetsAt: nil, severity: "normal"),
-                        ]
-                        Image(nsImage: MenuBarIcon.image(for: limits))
-                            .renderingMode(.template)
-                            .foregroundStyle(bar == .white ? Color.black : Color.white)
+                    ForEach(titles, id: \.self) { title in
+                        Text(title).font(.system(size: 13, weight: .medium))
                     }
                 }
+                .foregroundStyle(bar == .white ? Color.black : Color.white)
                 .padding(8)
                 .background(bar)
             }
@@ -60,11 +73,11 @@ struct MenuBarIconSheet: View {
 }
 
 @MainActor func render() throws {
-    let icons = ImageRenderer(content: MenuBarIconSheet())
-    icons.scale = 6
+    let icons = ImageRenderer(content: MenuBarSheet())
+    icons.scale = 3
     if let tiff = icons.nsImage?.tiffRepresentation,
        let png = NSBitmapImageRep(data: tiff)?.representation(using: .png, properties: [:]) {
-        try png.write(to: outDir.appendingPathComponent("menubar-icon.png"))
+        try png.write(to: outDir.appendingPathComponent("menubar.png"))
     }
 
     for (name, size, snapshot, frame) in cases {

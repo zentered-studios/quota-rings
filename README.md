@@ -1,15 +1,16 @@
 # Quota Rings
 
-A macOS desktop widget and menu bar item that show your Claude Code plan limits: the session limit, the weekly limit and each per-model weekly limit.
+A macOS desktop widget and menu bar item that show your Claude and Codex plan limits: the session limit, the weekly limit and each per-model weekly limit.
 
 ![Quota Rings widgets](docs/screenshots/01-at-a-glance.png)
 
-Quota Rings is an independent app. It is not made, endorsed or supported by Anthropic.
+Quota Rings is an independent app. It is not made, endorsed or supported by Anthropic or OpenAI.
 
 ## How it works
 
-- `Quota Rings.app` runs in the menu bar and shows `session% · week%`. Its menu lists every limit with its reset time. The first time it runs, it asks whether to open at login.
+- `Quota Rings.app` runs in the menu bar and shows each tool's tightest limit, for example `Claude 51% · Codex 69%`. Its menu lists every limit with its reset time. The first time it runs, it asks whether to open at login.
 - Every 5 minutes, after wake, and when you click the widget, the app reads Claude Code's OAuth token from the Keychain item `Claude Code-credentials` and calls `GET https://api.anthropic.com/api/oauth/usage`. Claude Code's `/usage` reads the same endpoint.
+- On the same schedule it reads Codex limits from its session logs. See [Codex](#codex).
 - It writes the result to `~/Library/Application Support/QuotaRings/usage.json` and reloads the widget.
 - The widget is sandboxed. It has read-only access to that one folder and no network or Keychain access.
 
@@ -28,6 +29,17 @@ The app never refreshes the Claude Code token. Refreshing would rotate the refre
 
 `/api/oauth/usage` is not a documented public API. Its response shape can change.
 
+### Codex
+
+Codex needs no setup. After each model response, Codex CLI writes a `token_count` event with the account's `rate_limits` to its session log in `~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl`. Quota Rings reads the newest such event from the 5 most recently written logs, sorted by modification date, so a resumed session in an older folder still counts. It makes no network request and never reads `~/.codex/auth.json`.
+
+- The numbers change only when Codex runs, so the newest event is current.
+- A window whose `resets_at` has passed shows 0% until Codex logs again.
+- Only events with `limit_id` `codex` count. Other pools, such as `premium`, are skipped.
+- Codex stays hidden until one of the 5 newest logs contains limits.
+- The log format is not a documented public API. It can change.
+- A custom `CODEX_HOME` is not supported. The app always reads `~/.codex`.
+
 ## Widget states
 
 | State | Shown when | Numbers |
@@ -39,13 +51,14 @@ The app never refreshes the Claude Code token. Refreshing would rotate the refre
 | Offline | The request failed on the network | dimmed |
 | Can't load usage | Any other failure | dimmed |
 
-A warning triangle also appears when the data is more than 20 minutes old, for example after the app quit.
+The states describe the Claude fetch. When Codex has limits, the widget keeps its Codex bar and shows the Claude state in the Claude slot. A warning line also appears when the data is more than 20 minutes old, for example after the app quit.
 
 ## Requirements
 
 - macOS 14 or later
 - Xcode and `xcodegen` (`brew install xcodegen`)
 - Claude Code signed in with a Pro or Max plan
+- Optional: Codex CLI signed in with a ChatGPT plan
 
 ## Develop
 
@@ -99,4 +112,4 @@ Open an issue or a pull request at https://github.com/zentered-studios/quota-rin
 
 ## License
 
-[MIT](LICENSE). Claude and Claude Code are trademarks of Anthropic. This project is not affiliated with Anthropic.
+[MIT](LICENSE). Claude and Claude Code are trademarks of Anthropic. This project is not affiliated with Anthropic or OpenAI.

@@ -12,6 +12,20 @@ struct UsageLimit: Codable, Hashable, Identifiable {
     var severity: String
 
     var id: String { "\(kind.rawValue)-\(label)" }
+
+    enum Level { case normal, warning, critical }
+
+    /// Set from the percentage so Claude and Codex match. Codex sends no severity.
+    var level: Level {
+        if percent >= 95 { return .critical }
+        if percent >= 80 { return .warning }
+        return .normal
+    }
+}
+
+extension Array where Element == UsageLimit {
+    /// The limit closest to running out.
+    var tightest: UsageLimit? { self.max { $0.percent < $1.percent } }
 }
 
 /// Why the last fetch did not produce fresh numbers.
@@ -61,6 +75,7 @@ enum UsageStatus: String, Codable {
 
 /// What the host app writes to disk and the widget reads.
 struct UsageSnapshot: Codable {
+    /// Claude limits. `status`, `statusDetail` and `error` describe the last Claude fetch.
     var limits: [UsageLimit]
     var fetchedAt: Date
     /// Set when the last fetch failed. `limits` may then hold the previous good values.
@@ -69,8 +84,20 @@ struct UsageSnapshot: Codable {
     var statusDetail: String?
     /// Technical detail for the last failure, shown in the menu.
     var error: String?
+    /// Codex limits from its session logs. Nil when Codex is not installed or has never logged limits.
+    var codex: [UsageLimit]? = nil
 
     var detailText: String? { statusDetail ?? status?.detail }
+
+    /// "Claude 51% · Codex 69%": each tool's tightest limit. Codex only when it logged limits.
+    static func menuBarTitle(for snapshot: UsageSnapshot?) -> String {
+        func percent(_ limits: [UsageLimit]?) -> String? {
+            limits?.tightest.map { "\(Int($0.percent.rounded()))%" }
+        }
+        var parts = ["Claude \(percent(snapshot?.limits) ?? "--")"]
+        if let codex = percent(snapshot?.codex) { parts.append("Codex \(codex)") }
+        return parts.joined(separator: " · ")
+    }
 
     static let placeholder = UsageSnapshot(
         limits: [
@@ -78,7 +105,10 @@ struct UsageSnapshot: Codable {
             UsageLimit(kind: .weekly, label: "Week", percent: 64, resetsAt: Date().addingTimeInterval(4 * 86400), severity: "warning"),
             UsageLimit(kind: .model, label: "Fable", percent: 29, resetsAt: Date().addingTimeInterval(4 * 86400), severity: "normal"),
         ],
-        fetchedAt: Date()
+        fetchedAt: Date(),
+        codex: [
+            UsageLimit(kind: .weekly, label: "Week", percent: 69, resetsAt: Date().addingTimeInterval(2 * 86400), severity: "normal"),
+        ]
     )
 }
 

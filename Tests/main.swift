@@ -196,6 +196,11 @@ let fallbackLog = [codexEvent(prolite), codexEvent("null"),
     .joined(separator: "\n")
 expect(CodexParser.latestLimits(inLog: Data(fallbackLog.utf8), now: codexNow)?.first?.percent == 69,
        "skips null and premium events")
+// An event with no windows falls back too, instead of hiding Codex.
+let noWindows = [codexEvent(prolite), codexEvent(#"{"limit_id":"codex","primary":null,"secondary":null}"#)]
+    .joined(separator: "\n")
+expect(CodexParser.latestLimits(inLog: Data(noWindows.utf8), now: codexNow)?.first?.percent == 69,
+       "skips an event without windows")
 expect(CodexParser.latestLimits(inLog: Data(codexLog.prefix(80).utf8), now: codexNow) == nil, "no event is nil")
 expect(CodexParser.latestLimits(inLog: Data(), now: codexNow) == nil, "empty log is nil")
 expect(CodexParser.label(minutes: 1440) == "1d" && CodexParser.label(minutes: 120) == "2h", "other window labels")

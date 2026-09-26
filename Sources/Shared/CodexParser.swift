@@ -33,11 +33,12 @@ enum CodexParser {
         // Other limit ids (seen: "premium") are separate pools, not the plan limit.
         if let id = rateLimits["limit_id"] as? String, id != "codex" { return nil }
 
-        let windows = ["primary", "secondary"].compactMap { rateLimits[$0] as? [String: Any] }
-        return windows
+        let windows = ["primary", "secondary"]
+            .compactMap { rateLimits[$0] as? [String: Any] }
             .compactMap { window(from: $0, now: now) }
-            .sorted { $0.minutes < $1.minutes }
-            .map(\.limit)
+        // No window to show: keep looking at older events.
+        guard !windows.isEmpty else { return nil }
+        return windows.sorted { $0.minutes < $1.minutes }.map(\.limit)
     }
 
     private static func window(from obj: [String: Any], now: Date) -> (minutes: Int, limit: UsageLimit)? {

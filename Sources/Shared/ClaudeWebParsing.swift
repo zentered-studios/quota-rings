@@ -18,7 +18,7 @@ enum ClaudeWebParsing {
         return list.compactMap { obj in
             // The id goes into a URL path. Accept only UUID characters.
             guard let id = obj["uuid"] as? String, !id.isEmpty,
-                  id.unicodeScalars.allSatisfy({ CharacterSet.alphanumerics.contains($0) && $0.isASCII || $0 == "-" })
+                  id.unicodeScalars.allSatisfy({ ($0.isASCII && CharacterSet.alphanumerics.contains($0)) || $0 == "-" })
             else { return nil }
             let caps = (obj["capabilities"] as? [String] ?? []).map { $0.lowercased() }
             return Organization(id: id, name: obj["name"] as? String, capabilities: Set(caps))

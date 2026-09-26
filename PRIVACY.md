@@ -16,4 +16,6 @@ Quota Rings collects no data. It sends nothing to its developer and runs without
 
 ## Contact
 
-patrick@zentered-studios.com
+Open an issue at https://github.com/zentered-studios/quota-rings/issues.
+
+The source code is public, so you can check every request the app makes.

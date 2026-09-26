@@ -81,3 +81,11 @@ rm -rf ~/Applications/"Quota Rings.app" /Applications/"Quota Rings.app" ~/Librar
 ```
 
 Also remove **Quota Rings** from System Settings > General > Login Items.
+
+## Contributing
+
+Open an issue or a pull request at https://github.com/zentered-studios/quota-rings. Run `./scripts/test.sh` and `./scripts/render.sh` before opening a pull request, and attach the renders for any visual change.
+
+## License
+
+[MIT](LICENSE). Claude and Claude Code are trademarks of Anthropic. This project is not affiliated with Anthropic.

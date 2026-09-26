@@ -55,5 +55,5 @@ First release. Desktop widget in small and medium sizes, menu bar item, and stat
 
 ## Open questions
 
-- Support URL and marketing URL are not set up.
+- Support URL: https://github.com/zentered-studios/quota-rings/issues. A marketing URL is not set up.
 - The model label in the screenshots ("Fable") is the name the usage API returns. It is an Anthropic model name. Replace the sample label in `Tools/Screenshots/main.swift` if the listing must avoid it.

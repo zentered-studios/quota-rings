@@ -100,12 +100,14 @@ final class UsageModel: ObservableObject {
         guard source != dataSource else { return }
         dataSource = source
         UserDefaults.standard.set(source.rawValue, forKey: Self.dataSourceKey)
-        // Drop any fetch still running for the previous source. The sign-in branch below
-        // does not start a refresh of its own, so this cannot wait for refresh() to do it.
-        refreshGeneration += 1
-        // Numbers from the other source may belong to another account.
+        // Numbers and errors from the other source may belong to another account.
         snapshot?.limits = []
+        snapshot?.status = nil
+        snapshot?.statusDetail = nil
+        snapshot?.error = nil
         if source == .claudeAI && SessionKeyStore.load() == nil {
+            // No refresh starts here, so drop any fetch still running for the previous source.
+            refreshGeneration += 1
             signInToClaudeAI()
         } else {
             Task { await refresh() }

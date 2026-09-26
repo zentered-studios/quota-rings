@@ -13,7 +13,18 @@ Quota Rings is an independent app. It is not made, endorsed or supported by Anth
 - It writes the result to `~/Library/Application Support/QuotaRings/usage.json` and reloads the widget.
 - The widget is sandboxed. It has read-only access to that one folder and no network or Keychain access.
 
-The app never refreshes the token. Refreshing would rotate the refresh token Claude Code stores and sign Claude Code out. When the token expires, the widget shows "Sign-in expired" until you run `claude` once.
+### Data sources
+
+Pick one under **Data Source** in the menu bar menu.
+
+| Source | Setup | How it fetches |
+| --- | --- | --- |
+| Claude Code sign-in (default) | None, if Claude Code is signed in | Keychain token, `GET api.anthropic.com/api/oauth/usage` |
+| claude.ai sign-in | Sign in once in the app's login window | Own session key, `GET claude.ai/api/organizations`, then `GET claude.ai/api/organizations/{uuid}/usage` |
+
+The claude.ai source needs no access to Claude Code, so it can also work inside the app sandbox. The login window uses a private web view store. The app keeps only the `sessionKey` cookie, in its own Keychain item `com.zentered.quotarings.claude-ai`, and saves a new key when claude.ai rotates it. Google sign-in may refuse to run in an embedded web view. The email code login works. Both claude.ai endpoints are undocumented.
+
+The app never refreshes the Claude Code token. Refreshing would rotate the refresh token Claude Code stores and sign Claude Code out. When the token expires, the widget shows "Sign-in expired" until you run `claude` once.
 
 `/api/oauth/usage` is not a documented public API. Its response shape can change.
 

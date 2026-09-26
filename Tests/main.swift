@@ -84,6 +84,43 @@ do {
     expect(false, "snapshot round-trip threw \(error)")
 }
 
+// claude.ai: the plan organization is the one with the chat capability.
+let orgs = ClaudeWebParsing.organizations(from: Data(#"""
+[
+  {"uuid": "api-org", "name": "API", "capabilities": ["api"]},
+  {"uuid": "chat-org", "name": "Personal", "capabilities": ["chat", "claude_max"]},
+  {"name": "no id"}
+]
+"""#.utf8))
+expect(orgs.count == 2, "orgs without uuid are skipped: \(orgs.count)")
+expect(ClaudeWebParsing.planOrganization(in: orgs)?.id == "chat-org", "picks chat org")
+expect(ClaudeWebParsing.planOrganization(in: [orgs[0]]) == nil, "API-only org has no plan limits")
+expect(ClaudeWebParsing.planOrganization(in: ClaudeWebParsing.organizations(from: Data(#"[{"uuid":"x"}]"#.utf8)))?.id == "x",
+       "org without capabilities is still used")
+expect(ClaudeWebParsing.organizations(from: Data("<html>".utf8)).isEmpty, "HTML is not an org list")
+
+// claude.ai: Cloudflare challenge vs. a real auth failure.
+expect(ClaudeWebParsing.isCloudflareChallenge(status: 403, contentType: "text/html; charset=UTF-8", body: Data()),
+       "403 HTML is a challenge")
+expect(!ClaudeWebParsing.isCloudflareChallenge(status: 403, contentType: "application/json",
+                                               body: Data(#"{"error":"permission_error"}"#.utf8)),
+       "403 JSON is an auth failure")
+expect(!ClaudeWebParsing.isCloudflareChallenge(status: 401, contentType: "text/html", body: Data()), "401 is never a challenge")
+
+// claude.ai: a rotated sessionKey in Set-Cookie is picked up.
+let claudeURL = URL(string: "https://claude.ai/api/organizations")!
+expect(ClaudeWebParsing.renewedSessionKey(
+    headers: ["Set-Cookie": "sessionKey=sk-new; Domain=.claude.ai; Path=/; Secure; HttpOnly"], url: claudeURL) == "sk-new",
+    "renewed session key")
+expect(ClaudeWebParsing.renewedSessionKey(headers: ["Set-Cookie": "other=1; Path=/"], url: claudeURL) == nil,
+       "unrelated cookie ignored")
+
+// The claude.ai source can override the widget's next-step text.
+var webSnapshot = UsageSnapshot(limits: [], fetchedAt: Date(), status: .expired)
+expect(webSnapshot.detailText == UsageStatus.expired.detail, "default detail")
+webSnapshot.statusDetail = "Sign in to claude.ai again from the menu bar."
+expect(webSnapshot.detailText == "Sign in to claude.ai again from the menu bar.", "override detail")
+
 if failures == 0 {
     print("All parser tests passed")
 } else {

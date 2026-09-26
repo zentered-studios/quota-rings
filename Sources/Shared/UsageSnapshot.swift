@@ -65,8 +65,12 @@ struct UsageSnapshot: Codable {
     var fetchedAt: Date
     /// Set when the last fetch failed. `limits` may then hold the previous good values.
     var status: UsageStatus?
+    /// Next step that replaces `status.detail`, e.g. when the data source is claude.ai.
+    var statusDetail: String?
     /// Technical detail for the last failure, shown in the menu.
     var error: String?
+
+    var detailText: String? { statusDetail ?? status?.detail }
 
     static let placeholder = UsageSnapshot(
         limits: [

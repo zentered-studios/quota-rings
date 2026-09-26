@@ -59,7 +59,7 @@ struct UsageWidgetContent: View {
                     }
                     Spacer(minLength: 4)
                     if size == .medium, let status = snapshot.status {
-                        StatusLine(status: status, showDetail: true)
+                        StatusLine(status: status, detail: snapshot.detailText, showDetail: true)
                     }
                 }
             } else {
@@ -127,7 +127,7 @@ struct StateInfo {
         if let status = snapshot?.status {
             symbol = status.symbol
             title = status.title
-            detail = status.detail
+            detail = snapshot?.detailText ?? status.detail
         } else if snapshot == nil {
             symbol = "power"
             title = "Not running"
@@ -142,13 +142,14 @@ struct StateInfo {
 
 private struct StatusLine: View {
     let status: UsageStatus
+    var detail: String? = nil
     let showDetail: Bool
 
     var body: some View {
         HStack(spacing: 4) {
             Image(systemName: status.symbol)
                 .font(.system(size: 9, weight: .bold))
-            Text(showDetail ? "\(status.title) · \(status.detail)" : status.title)
+            Text(showDetail ? "\(status.title) · \(detail ?? status.detail)" : status.title)
                 .font(.system(size: 10, weight: .semibold, design: .rounded))
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)

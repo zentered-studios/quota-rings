@@ -27,14 +27,60 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 }
 
+/// Where usage comes from.
+enum DataSource: String, CaseIterable {
+    /// Claude Code's sign-in in the Keychain. Needs no setup, but only works outside the sandbox.
+    case claudeCode
+    /// A claude.ai session the user signs in to inside Quota Rings.
+    case claudeAI
+
+    var menuTitle: String {
+        switch self {
+        case .claudeCode: return "Claude Code sign-in"
+        case .claudeAI: return "claude.ai sign-in"
+        }
+    }
+
+    func fetch() async throws -> [UsageLimit] {
+        switch self {
+        case .claudeCode: return try await UsageFetcher.fetch()
+        case .claudeAI: return try await ClaudeWebFetcher.fetch()
+        }
+    }
+
+    func status(for error: Error) -> UsageStatus {
+        switch (self, error) {
+        case (.claudeAI, ClaudeWebFetcher.FetchError.notSignedIn): return .notSignedIn
+        case (.claudeAI, ClaudeWebFetcher.FetchError.sessionExpired): return .expired
+        case (.claudeAI, ClaudeWebFetcher.FetchError.noOrganization): return .noPlan
+        default: return UsageFetcher.status(for: error)
+        }
+    }
+
+    /// Next step for the widget when it differs from the Claude Code wording.
+    func detail(for status: UsageStatus, error: Error) -> String? {
+        guard self == .claudeAI else { return nil }
+        if case ClaudeWebFetcher.FetchError.cloudflare = error { return "claude.ai blocked the request. Try without a VPN." }
+        switch status {
+        case .notSignedIn: return "Sign in to claude.ai from the menu bar."
+        case .expired: return "Sign in to claude.ai again from the menu bar."
+        default: return nil
+        }
+    }
+}
+
 @MainActor
 final class UsageModel: ObservableObject {
     static let shared = UsageModel()
     static let pollInterval: TimeInterval = 5 * 60
     private static let didSetUpLoginItemKey = "didSetUpLoginItem"
+    private static let dataSourceKey = "dataSource"
 
     @Published private(set) var snapshot: UsageSnapshot?
     @Published var launchAtLogin = SMAppService.mainApp.status == .enabled
+    @Published private(set) var dataSource: DataSource =
+        DataSource(rawValue: UserDefaults.standard.string(forKey: UsageModel.dataSourceKey) ?? "") ?? .claudeCode
+    @Published private(set) var hasClaudeAISession = SessionKeyStore.load() != nil
 
     private var timer: Timer?
     private var wakeObserver: NSObjectProtocol?
@@ -65,17 +111,20 @@ final class UsageModel: ObservableObject {
 
     func refresh() async {
         var next: UsageSnapshot
+        let source = dataSource
         do {
-            let limits = try await UsageFetcher.fetch()
+            let limits = try await source.fetch()
             next = UsageSnapshot(limits: limits, fetchedAt: Date())
         } catch {
-            let status = UsageFetcher.status(for: error)
+            let status = source.status(for: error)
             // Keep the last good values unless the account state changed under them.
             next = snapshot ?? UsageSnapshot(limits: [], fetchedAt: Date())
             if status.clearsLimits { next.limits = [] }
             next.status = status
+            next.statusDetail = source.detail(for: status, error: error)
             next.error = error.localizedDescription
         }
+        hasClaudeAISession = SessionKeyStore.load() != nil
         snapshot = next
         do {
             try SnapshotStore.save(next)
@@ -84,6 +133,31 @@ final class UsageModel: ObservableObject {
             snapshot?.error = "Could not write \(SnapshotStore.fileURL.path): \(error.localizedDescription)"
         }
         WidgetCenter.shared.reloadAllTimelines()
+    }
+
+    func setDataSource(_ source: DataSource) {
+        guard source != dataSource else { return }
+        dataSource = source
+        UserDefaults.standard.set(source.rawValue, forKey: Self.dataSourceKey)
+        // Numbers from the other source may belong to another account.
+        snapshot?.limits = []
+        if source == .claudeAI && SessionKeyStore.load() == nil {
+            signInToClaudeAI()
+        } else {
+            Task { await refresh() }
+        }
+    }
+
+    func signInToClaudeAI() {
+        SignInWindowController.show { [weak self] in
+            Task { await self?.refresh() }
+        }
+    }
+
+    func signOutOfClaudeAI() {
+        SessionKeyStore.delete()
+        hasClaudeAISession = false
+        Task { await refresh() }
     }
 
     /// The widget only updates while this app runs, so start at login by default.
@@ -111,7 +185,7 @@ struct MenuContent: View {
         if let snapshot = model.snapshot {
             if let status = snapshot.status {
                 Label(status.title, systemImage: status.symbol)
-                Text(status.detail)
+                if let detail = snapshot.detailText { Text(detail) }
                 if let error = snapshot.error, status == .failed {
                     Text(error)
                 }
@@ -130,6 +204,19 @@ struct MenuContent: View {
         }
         Button("Refresh Now") { Task { await model.refresh() } }
             .keyboardShortcut("r")
+        Picker("Data Source", selection: Binding(
+            get: { model.dataSource },
+            set: { model.setDataSource($0) }
+        )) {
+            ForEach(DataSource.allCases, id: \.self) { Text($0.menuTitle).tag($0) }
+        }
+        if model.dataSource == .claudeAI {
+            if model.hasClaudeAISession {
+                Button("Sign Out of claude.ai") { model.signOutOfClaudeAI() }
+            } else {
+                Button("Sign In to claude.ai…") { model.signInToClaudeAI() }
+            }
+        }
         Toggle("Open at Login", isOn: Binding(
             get: { model.launchAtLogin },
             set: { model.setLaunchAtLogin($0) }

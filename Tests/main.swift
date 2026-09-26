@@ -132,6 +132,21 @@ expect(ClaudeWebParsing.renewedSessionKey(
     headers: ["Set-Cookie": "sessionKey=sk-evil; Path=/"], url: URL(string: "https://evilclaude.ai/x")!) == nil,
     "session key from another host ignored")
 
+// Credential sessions refuse redirects: the delegate answers nil for any redirect target.
+do {
+    let original = URL(string: "https://claude.ai/api/organizations")!
+    let task = URLSession(configuration: .ephemeral).dataTask(with: original) // never resumed, no network
+    let redirect = HTTPURLResponse(url: original, statusCode: 302, httpVersion: "HTTP/1.1",
+                                   headerFields: ["Location": "https://example.com/"])!
+    var request = URLRequest(url: URL(string: "https://example.com/")!)
+    request.setValue("sessionKey=secret", forHTTPHeaderField: "Cookie")
+    var followed: URLRequest?? = .none
+    NoRedirectDelegate().urlSession(URLSession.credentialSession(), task: task, willPerformHTTPRedirection: redirect,
+                                    newRequest: request) { followed = .some($0) }
+    expect(followed != nil, "delegate answered")
+    expect(followed! == nil, "redirect refused, cookie not forwarded")
+}
+
 // The claude.ai source can override the widget's next-step text.
 var webSnapshot = UsageSnapshot(limits: [], fetchedAt: Date(), status: .expired)
 expect(webSnapshot.detailText == UsageStatus.expired.detail, "default detail")

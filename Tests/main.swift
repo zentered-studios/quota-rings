@@ -153,6 +153,65 @@ expect(webSnapshot.detailText == UsageStatus.expired.detail, "default detail")
 webSnapshot.statusDetail = "Sign in to claude.ai again from the menu bar."
 expect(webSnapshot.detailText == "Sign in to claude.ai again from the menu bar.", "override detail")
 
+// Codex: lines trimmed from a real ~/.codex/sessions log on 2026-09-26.
+let codexNow = Date(timeIntervalSince1970: 1790442000) // 2026-09-26T17:00:00Z
+func codexEvent(_ rateLimits: String) -> String {
+    #"{"timestamp":"2026-09-26T17:03:20.449Z","type":"event_msg","payload":{"type":"token_count","info":null,"rate_limits":"#
+        + rateLimits + "}}"
+}
+let prolite = #"{"limit_id":"codex","limit_name":null,"primary":{"used_percent":69.0,"window_minutes":10080,"resets_at":1790610676},"secondary":null,"credits":{"has_credits":false,"unlimited":false,"balance":"0"},"plan_type":"prolite"}"#
+let older = #"{"limit_id":"codex","primary":{"used_percent":50.0,"window_minutes":10080,"resets_at":1790610676},"secondary":null}"#
+let codexLog = [
+    #"{"timestamp":"2026-09-26T16:00:00.000Z","type":"session_meta","payload":{"id":"x"}}"#,
+    codexEvent(older),
+    codexEvent(prolite),
+    #"{"timestamp":"2026-09-26T17:03:21.000Z","type":"response_item","payload":{"type":"message"}}"#,
+    "",
+].joined(separator: "\n")
+
+if let limits = CodexParser.latestLimits(inLog: Data(codexLog.utf8), now: codexNow) {
+    expect(limits.map(\.label) == ["Week"], "codex labels: \(limits.map(\.label))")
+    expect(limits.first?.percent == 69, "codex uses the newest event: \(limits.map(\.percent))")
+    expect(limits.first?.kind == .weekly, "codex weekly kind")
+    expect(limits.first?.resetsAt == Date(timeIntervalSince1970: 1790610676), "codex reset from unix seconds")
+} else {
+    expect(false, "codex log had no limits")
+}
+
+// Plus plan: a 5 hour primary and a weekly secondary, listed session first.
+let plus = #"{"limit_id":"codex","primary":{"used_percent":12.5,"window_minutes":300,"resets_at":1790450000},"secondary":{"used_percent":40,"window_minutes":10080,"resets_at":1790610676},"plan_type":"plus"}"#
+let plusLimits = CodexParser.latestLimits(inLog: Data(codexEvent(plus).utf8), now: codexNow) ?? []
+expect(plusLimits.map(\.label) == ["Session", "Week"], "plus labels: \(plusLimits.map(\.label))")
+expect(plusLimits.map(\.kind) == [.session, .weekly], "plus kinds")
+expect(plusLimits.map(\.percent) == [12.5, 40], "plus percents")
+
+// A window whose reset passed shows 0% until Codex logs again.
+let afterReset = Date(timeIntervalSince1970: 1790610677)
+let reset = CodexParser.latestLimits(inLog: Data(codexEvent(prolite).utf8), now: afterReset) ?? []
+expect(reset.first?.percent == 0 && reset.first?.resetsAt == nil, "passed reset shows 0%: \(reset)")
+
+// An event without limits, or from another pool, falls back to the one before it.
+let fallbackLog = [codexEvent(prolite), codexEvent("null"),
+                   codexEvent(#"{"limit_id":"premium","primary":{"used_percent":99,"window_minutes":10080}}"#)]
+    .joined(separator: "\n")
+expect(CodexParser.latestLimits(inLog: Data(fallbackLog.utf8), now: codexNow)?.first?.percent == 69,
+       "skips null and premium events")
+expect(CodexParser.latestLimits(inLog: Data(codexLog.prefix(80).utf8), now: codexNow) == nil, "no event is nil")
+expect(CodexParser.latestLimits(inLog: Data(), now: codexNow) == nil, "empty log is nil")
+expect(CodexParser.label(minutes: 1440) == "1d" && CodexParser.label(minutes: 120) == "2h", "other window labels")
+
+// Snapshots written before Codex support still load, without Codex.
+do {
+    let old = #"{"limits":[],"fetchedAt":"2026-09-26T17:00:00Z"}"#
+    let decoded = try SnapshotStore.decoder.decode(UsageSnapshot.self, from: Data(old.utf8))
+    expect(decoded.codex == nil, "old snapshot has no codex")
+    let data = try SnapshotStore.encoder.encode(UsageSnapshot.placeholder)
+    let back = try SnapshotStore.decoder.decode(UsageSnapshot.self, from: data)
+    expect(back.codex?.map(\.percent) == [69], "codex round-trip")
+} catch {
+    expect(false, "codex snapshot threw \(error)")
+}
+
 if failures == 0 {
     print("All parser tests passed")
 } else {

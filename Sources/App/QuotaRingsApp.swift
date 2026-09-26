@@ -80,6 +80,7 @@ final class UsageModel: ObservableObject {
         } catch {
             result = .failure(error)
         }
+        let codex = await Task.detached { CodexReader.read() }.value
         guard generation == refreshGeneration else { return }
 
         var next: UsageSnapshot
@@ -95,6 +96,7 @@ final class UsageModel: ObservableObject {
             next.statusDetail = source.detail(for: status, error: error)
             next.error = error.localizedDescription
         }
+        next.codex = codex
         hasClaudeAISession = SessionKeyStore.load() != nil
         snapshot = next
         do {
@@ -174,18 +176,26 @@ struct MenuContent: View {
 
     var body: some View {
         if let snapshot = model.snapshot {
-            if let status = snapshot.status {
-                Label(status.title, systemImage: status.symbol)
-                if let detail = snapshot.detailText { Text(detail) }
-                if let error = snapshot.error, status == .failed {
-                    Text(error)
+            Section("Claude") {
+                if let status = snapshot.status {
+                    Label(status.title, systemImage: status.symbol)
+                    if let detail = snapshot.detailText { Text(detail) }
+                    if let error = snapshot.error, status == .failed {
+                        Text(error)
+                    }
                 }
-                Divider()
+                ForEach(snapshot.limits) { limit in
+                    Text("\(limit.label): \(Int(limit.percent.rounded()))%\(resetText(limit))")
+                }
             }
-            ForEach(snapshot.limits) { limit in
-                Text("\(limit.label): \(Int(limit.percent.rounded()))%\(resetText(limit))")
+            if let codex = snapshot.codex, !codex.isEmpty {
+                Section("Codex") {
+                    ForEach(codex) { limit in
+                        Text("\(limit.label): \(Int(limit.percent.rounded()))%\(resetText(limit))")
+                    }
+                }
             }
-            if !snapshot.limits.isEmpty {
+            if !snapshot.limits.isEmpty || snapshot.codex?.isEmpty == false {
                 Text("Updated \(snapshot.fetchedAt.formatted(date: .omitted, time: .shortened))")
                 Divider()
             }

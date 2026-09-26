@@ -61,6 +61,7 @@ enum UsageStatus: String, Codable {
 
 /// What the host app writes to disk and the widget reads.
 struct UsageSnapshot: Codable {
+    /// Claude limits. `status`, `statusDetail` and `error` describe the last Claude fetch.
     var limits: [UsageLimit]
     var fetchedAt: Date
     /// Set when the last fetch failed. `limits` may then hold the previous good values.
@@ -69,6 +70,8 @@ struct UsageSnapshot: Codable {
     var statusDetail: String?
     /// Technical detail for the last failure, shown in the menu.
     var error: String?
+    /// Codex limits from its session logs. Nil when Codex is not installed or has never logged limits.
+    var codex: [UsageLimit]? = nil
 
     var detailText: String? { statusDetail ?? status?.detail }
 
@@ -78,7 +81,10 @@ struct UsageSnapshot: Codable {
             UsageLimit(kind: .weekly, label: "Week", percent: 64, resetsAt: Date().addingTimeInterval(4 * 86400), severity: "warning"),
             UsageLimit(kind: .model, label: "Fable", percent: 29, resetsAt: Date().addingTimeInterval(4 * 86400), severity: "normal"),
         ],
-        fetchedAt: Date()
+        fetchedAt: Date(),
+        codex: [
+            UsageLimit(kind: .weekly, label: "Week", percent: 69, resetsAt: Date().addingTimeInterval(2 * 86400), severity: "normal"),
+        ]
     )
 }
 

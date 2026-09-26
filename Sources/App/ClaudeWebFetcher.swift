@@ -35,8 +35,6 @@ enum ClaudeWebFetcher {
     }()
 
     static func fetch() async throws -> [UsageLimit] {
-        guard SessionKeyStore.load() != nil else { throw FetchError.notSignedIn }
-
         let orgData = try await get("organizations")
         guard let org = ClaudeWebParsing.planOrganization(in: ClaudeWebParsing.organizations(from: orgData)) else {
             throw FetchError.noOrganization

@@ -23,6 +23,8 @@ enum UsageFetcher {
     }
 
     static let endpoint = URL(string: "https://api.anthropic.com/api/oauth/usage")!
+    /// No redirects, so the bearer token only ever goes to `endpoint`.
+    private static let session = URLSession.credentialSession()
 
     static func status(for error: Error) -> UsageStatus {
         switch error {
@@ -49,7 +51,7 @@ enum UsageFetcher {
         request.setValue("oauth-2025-04-20", forHTTPHeaderField: "anthropic-beta")
         request.setValue("quota-rings/0.1", forHTTPHeaderField: "User-Agent")
 
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await session.data(for: request)
         let status = (response as? HTTPURLResponse)?.statusCode ?? 0
         switch status {
         case 200: return try UsageParser.parse(data)

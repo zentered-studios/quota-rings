@@ -128,6 +128,9 @@ expect(ClaudeWebParsing.renewedSessionKey(
     "renewed session key")
 expect(ClaudeWebParsing.renewedSessionKey(headers: ["Set-Cookie": "other=1; Path=/"], url: claudeURL) == nil,
        "unrelated cookie ignored")
+expect(ClaudeWebParsing.renewedSessionKey(
+    headers: ["Set-Cookie": "sessionKey=sk-evil; Path=/"], url: URL(string: "https://evilclaude.ai/x")!) == nil,
+    "session key from another host ignored")
 
 // The claude.ai source can override the widget's next-step text.
 var webSnapshot = UsageSnapshot(limits: [], fetchedAt: Date(), status: .expired)

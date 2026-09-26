@@ -25,14 +25,8 @@ enum ClaudeWebFetcher {
 
     private static let base = URL(string: "https://claude.ai/api/")!
 
-    /// Requests carry the cookie by hand, so no shared cookie store is involved.
-    private static let session: URLSession = {
-        let config = URLSessionConfiguration.ephemeral
-        config.httpCookieAcceptPolicy = .never
-        config.httpShouldSetCookies = false
-        config.timeoutIntervalForRequest = 20
-        return URLSession(configuration: config)
-    }()
+    /// Requests carry the cookie by hand: no shared cookie store, no redirects.
+    private static let session = URLSession.credentialSession()
 
     static func fetch() async throws -> [UsageLimit] {
         let orgData = try await get("organizations")
@@ -57,7 +51,8 @@ enum ClaudeWebFetcher {
         let headers = http.allHeaderFields.reduce(into: [String: String]()) { result, pair in
             if let k = pair.key as? String, let v = pair.value as? String { result[k] = v }
         }
-        if let renewed = ClaudeWebParsing.renewedSessionKey(headers: headers, url: url), renewed != key {
+        // Bind any Set-Cookie to the URL that actually answered.
+        if let renewed = ClaudeWebParsing.renewedSessionKey(headers: headers, url: http.url ?? url), renewed != key {
             SessionKeyStore.save(renewed)
         }
 

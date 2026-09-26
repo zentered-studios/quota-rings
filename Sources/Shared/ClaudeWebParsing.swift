@@ -49,7 +49,7 @@ enum ClaudeWebParsing {
     /// The `sessionKey` value from a `Set-Cookie` response, if claude.ai rotated it.
     static func renewedSessionKey(headers: [String: String], url: URL) -> String? {
         HTTPCookie.cookies(withResponseHeaderFields: headers, for: url)
-            .first { $0.name == "sessionKey" && !$0.value.isEmpty }?
+            .first { $0.name == "sessionKey" && !$0.value.isEmpty && isClaudeCookieDomain($0.domain) }?
             .value
     }
 }

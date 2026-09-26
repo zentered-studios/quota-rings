@@ -12,6 +12,20 @@ struct UsageLimit: Codable, Hashable, Identifiable {
     var severity: String
 
     var id: String { "\(kind.rawValue)-\(label)" }
+
+    enum Level { case normal, warning, critical }
+
+    /// Set from the percentage so Claude and Codex match. Codex sends no severity.
+    var level: Level {
+        if percent >= 95 { return .critical }
+        if percent >= 80 { return .warning }
+        return .normal
+    }
+}
+
+extension Array where Element == UsageLimit {
+    /// The limit closest to running out.
+    var tightest: UsageLimit? { self.max { $0.percent < $1.percent } }
 }
 
 /// Why the last fetch did not produce fresh numbers.

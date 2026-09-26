@@ -6,12 +6,20 @@ import SwiftUI
 let outDir = URL(fileURLWithPath: CommandLine.arguments.dropFirst().first ?? "build/render", isDirectory: true)
 try FileManager.default.createDirectory(at: outDir, withIntermediateDirectories: true)
 
-let data = SnapshotStore.load().flatMap { $0.limits.isEmpty ? nil : $0 } ?? .placeholder
+var data = SnapshotStore.load().flatMap { $0.limits.isEmpty ? nil : $0 } ?? .placeholder
+data.status = nil
+if data.codex == nil { data.codex = UsageSnapshot.placeholder.codex }
 
 func withStatus(_ status: UsageStatus, keepLimits: Bool) -> UsageSnapshot {
     var s = data
     s.status = status
     if !keepLimits { s.limits = [] }
+    return s
+}
+
+func variant(_ change: (inout UsageSnapshot) -> Void) -> UsageSnapshot {
+    var s = data
+    change(&s)
     return s
 }
 
@@ -28,6 +36,13 @@ let cases: [(String, WidgetSize, UsageSnapshot?, CGSize)] = [
     ("medium-not-signed-in", .medium, withStatus(.notSignedIn, keepLimits: false), medium),
     ("small-no-plan", .small, withStatus(.noPlan, keepLimits: false), small),
     ("small-expired-empty", .small, withStatus(.expired, keepLimits: false), small),
+    ("small-claude-only", .small, variant { $0.codex = nil }, small),
+    ("medium-claude-only", .medium, variant { $0.codex = nil }, medium),
+    ("small-critical", .small, variant { $0.codex?[0].percent = 97; $0.limits[0].percent = 84 }, small),
+    ("medium-critical", .medium, variant { $0.codex?[0].percent = 97; $0.limits[0].percent = 84 }, medium),
+    ("small-stale", .small, variant { $0.fetchedAt = Date().addingTimeInterval(-3600) }, small),
+    ("small-not-signed-in-codex", .small, variant { $0.limits = []; $0.status = .notSignedIn }, small),
+    ("medium-not-signed-in-codex", .medium, variant { $0.limits = []; $0.status = .notSignedIn }, medium),
     ("small-not-running", .small, nil, small),
     ("medium-not-running", .medium, nil, medium),
 ]

@@ -1,0 +1,261 @@
+<title>Quota Rings Codex Options</title>
+<style>
+:root {
+  --bg: #eef0f3;
+  --ink: #1b1d21;
+  --muted: #5d636d;
+  --line: #d6dae0;
+  --panel: #ffffff;
+  --pick: #1f6f5c;
+  --bar-bg: rgba(255,255,255,0.72);
+  --bar-ink: #111;
+  /* widget stays dark in both themes, like the shipped widget */
+  --w-bg: #1c1d20;
+  --w-ink: #f4f4f5;
+  --w-muted: rgba(255,255,255,0.52);
+  --w-track: rgba(255,255,255,0.12);
+  --claude: #e8785c;
+  --codex: #8fb4e8;
+  --warn: #f5ba52;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #15171a; --ink: #e9ebee; --muted: #9aa1ab; --line: #2b2f35; --panel: #1d2024;
+    --pick: #6fd0b4; --bar-bg: rgba(40,42,46,0.85); --bar-ink: #f2f2f2;
+    --w-bg: #232428;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #15171a; --ink: #e9ebee; --muted: #9aa1ab; --line: #2b2f35; --panel: #1d2024;
+  --pick: #6fd0b4; --bar-bg: rgba(40,42,46,0.85); --bar-ink: #f2f2f2;
+  --w-bg: #232428;
+}
+body {
+  background: var(--bg); color: var(--ink);
+  font: 15px/1.5 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+  padding-inline: 20px; padding-block: 36px 60px;
+}
+main { max-width: 980px; margin: 0 auto; display: grid; gap: 44px; }
+h1 { font-size: 28px; line-height: 1.2; margin: 0 0 8px; text-wrap: balance; letter-spacing: -0.01em; }
+h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin: 0 0 14px; }
+h3 { font-size: 17px; margin: 0; }
+p { margin: 0; max-width: 65ch; }
+.lede { color: var(--muted); }
+.data { font-variant-numeric: tabular-nums; font-size: 13px; color: var(--muted); margin-top: 10px; }
+
+.option { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 20px; display: grid; gap: 14px; }
+.option.pick { border-color: var(--pick); box-shadow: 0 0 0 1px var(--pick); }
+.head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.tag { font-size: 12px; font-weight: 600; color: var(--pick); }
+.note { color: var(--muted); font-size: 14px; }
+.stack { display: grid; gap: 16px; }
+.row { display: flex; gap: 18px; flex-wrap: wrap; align-items: flex-start; }
+
+/* ---------- widget chrome ---------- */
+.w {
+  background: var(--w-bg); color: var(--w-ink); border-radius: 22px;
+  width: 170px; height: 170px; max-width: 100%; padding: 15px; box-sizing: border-box;
+  display: flex; flex-direction: column; font-variant-numeric: tabular-nums;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+}
+.w.m { width: 364px; }
+.w .label { font-size: 11px; font-weight: 600; }
+.w .sub { font-size: 10.5px; color: var(--w-muted); }
+.w .pct { font-weight: 700; }
+.track { height: 6px; border-radius: 3px; background: var(--w-track); overflow: hidden; }
+.track.thin { height: 4px; border-radius: 2px; }
+.fill { height: 100%; border-radius: inherit; }
+.claude .fill { background: var(--claude); }
+.codex .fill { background: var(--codex); }
+.fill.hot { background: var(--warn); }
+
+/* option A: one bar per tool */
+.a { gap: 14px; justify-content: center; }
+.a .tool { display: grid; gap: 5px; }
+.a .top { display: flex; justify-content: space-between; align-items: baseline; }
+.a .pct { font-size: 20px; }
+.a.m { flex-direction: row; gap: 22px; align-items: center; }
+.a.m .col { flex: 1; display: grid; gap: 10px; }
+.a.m .col h4 { margin: 0; font-size: 12px; font-weight: 700; }
+.a.m .line { display: grid; gap: 4px; }
+.a.m .line .top { font-size: 11px; }
+.a.m .line .pct { font-size: 13px; }
+
+/* option B: every limit, one list */
+.b { gap: 9px; justify-content: center; }
+.b .item { display: grid; gap: 4px; }
+.b .top { display: flex; justify-content: space-between; font-size: 11px; }
+.b .top .pct { font-size: 11px; }
+.b.m .grid { display: grid; grid-template-columns: 1fr 1fr; column-gap: 22px; row-gap: 11px; }
+
+/* option C: one big number */
+.c { justify-content: space-between; }
+.c .big { font-size: 46px; line-height: 1; font-weight: 700; letter-spacing: -0.02em; }
+.c .big small { font-size: 22px; color: var(--w-muted); }
+.c .mini { display: grid; gap: 6px; }
+.c .mini .top { display: flex; justify-content: space-between; font-size: 10.5px; color: var(--w-muted); }
+.c.m { flex-direction: row; gap: 0; align-items: stretch; }
+.c.m .half { flex: 1; display: flex; flex-direction: column; justify-content: space-between; padding-right: 16px; }
+.c.m .half + .half { padding: 0 0 0 16px; border-left: 1px solid var(--w-track); }
+
+/* ---------- menu bar ---------- */
+.menubar {
+  background: var(--bar-bg); color: var(--bar-ink); border: 1px solid var(--line);
+  border-radius: 8px; height: 28px; display: flex; align-items: center; justify-content: flex-end;
+  gap: 16px; padding-inline: 12px; font-size: 13px; font-weight: 500; overflow-x: auto;
+  font-variant-numeric: tabular-nums; max-width: 100%; box-sizing: border-box;
+}
+.menubar .dim { opacity: 0.55; }
+.menubar .ours { padding: 1px 6px; border-radius: 5px; background: rgba(128,128,128,0.2); white-space: nowrap; display: inline-flex; align-items: center; gap: 5px; }
+.menubar .ai { font-weight: 800; font-size: 11px; letter-spacing: 0.02em; }
+.glyph { display: inline-flex; gap: 2px; align-items: flex-end; height: 12px; }
+.glyph i { width: 3px; background: currentColor; border-radius: 1px; opacity: 0.35; position: relative; height: 12px; }
+.glyph i b { position: absolute; left: 0; right: 0; bottom: 0; background: currentColor; border-radius: 1px; }
+.mb-list { display: grid; gap: 14px; }
+.mb { display: grid; gap: 6px; }
+.mb .head h3 { font-size: 15px; }
+
+.pickbox { border-left: 3px solid var(--pick); padding-left: 16px; display: grid; gap: 8px; }
+ul { margin: 0; padding-left: 20px; display: grid; gap: 4px; max-width: 70ch; }
+code { font: 13px ui-monospace, SFMono-Regular, Menlo, monospace; }
+</style>
+
+<main>
+  <header>
+    <h1>Codex in Quota Rings</h1>
+    <p class="lede">Three widget layouts and four menu bar treatments. Each one shows Claude and Codex together and uses bars instead of rings.</p>
+    <p class="data">Numbers are real, read on Sep 26, 17:13 UTC. Claude: session 51% (resets in 3h 6m), week 14% (4d), Fable 0%. Codex: week 69% (2d 22h), plan <code>prolite</code>, from <code>~/.codex/sessions</code>.</p>
+  </header>
+
+  <section>
+    <h2>Widget</h2>
+    <div class="stack">
+
+      <article class="option pick">
+        <div class="head"><h3>A. One bar per tool</h3><span class="tag">Recommended</span></div>
+        <p class="note">Small shows each tool's tightest limit. Medium splits into a Claude column and a Codex column, with one bar per limit.</p>
+        <div class="row">
+          <div class="w a">
+            <div class="tool claude">
+              <div class="top"><span class="label">Claude</span><span class="pct">51%</span></div>
+              <div class="track"><div class="fill" style="width:51%"></div></div>
+              <span class="sub">Session · 3h 6m</span>
+            </div>
+            <div class="tool codex">
+              <div class="top"><span class="label">Codex</span><span class="pct">69%</span></div>
+              <div class="track"><div class="fill" style="width:69%"></div></div>
+              <span class="sub">Week · 2d 22h</span>
+            </div>
+          </div>
+          <div class="w m a">
+            <div class="col claude">
+              <h4>Claude</h4>
+              <div class="line"><div class="top"><span>Session</span><span class="pct">51%</span></div><div class="track thin"><div class="fill" style="width:51%"></div></div></div>
+              <div class="line"><div class="top"><span>Week</span><span class="pct">14%</span></div><div class="track thin"><div class="fill" style="width:14%"></div></div></div>
+              <div class="line"><div class="top"><span>Fable</span><span class="pct">0%</span></div><div class="track thin"><div class="fill" style="width:0%"></div></div></div>
+            </div>
+            <div class="col codex">
+              <h4>Codex</h4>
+              <div class="line"><div class="top"><span>Week</span><span class="pct">69%</span></div><div class="track thin"><div class="fill" style="width:69%"></div></div></div>
+              <span class="sub">resets in 2d 22h</span>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <article class="option">
+        <div class="head"><h3>B. One list, every limit</h3></div>
+        <p class="note">No grouping. Every limit gets a thin labeled bar. Takes the most room, and the small size fits four rows at most.</p>
+        <div class="row">
+          <div class="w b">
+            <div class="item claude"><div class="top"><span>Claude session</span><span class="pct">51%</span></div><div class="track thin"><div class="fill" style="width:51%"></div></div></div>
+            <div class="item claude"><div class="top"><span>Claude week</span><span class="pct">14%</span></div><div class="track thin"><div class="fill" style="width:14%"></div></div></div>
+            <div class="item claude"><div class="top"><span>Fable</span><span class="pct">0%</span></div><div class="track thin"><div class="fill" style="width:0%"></div></div></div>
+            <div class="item codex"><div class="top"><span>Codex week</span><span class="pct">69%</span></div><div class="track thin"><div class="fill" style="width:69%"></div></div></div>
+          </div>
+          <div class="w m b" style="justify-content:center">
+            <div class="grid">
+              <div class="item claude"><div class="top"><span>Claude session</span><span class="pct">51% · 3h 6m</span></div><div class="track thin"><div class="fill" style="width:51%"></div></div></div>
+              <div class="item codex"><div class="top"><span>Codex week</span><span class="pct">69% · 2d 22h</span></div><div class="track thin"><div class="fill" style="width:69%"></div></div></div>
+              <div class="item claude"><div class="top"><span>Claude week</span><span class="pct">14% · 4d</span></div><div class="track thin"><div class="fill" style="width:14%"></div></div></div>
+              <div class="item claude"><div class="top"><span>Fable</span><span class="pct">0% · 4d</span></div><div class="track thin"><div class="fill" style="width:0%"></div></div></div>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <article class="option">
+        <div class="head"><h3>C. One big number</h3></div>
+        <p class="note">The widget answers one question: how close am I to any limit? The big number is the highest of all limits. Bars sit underneath.</p>
+        <div class="row">
+          <div class="w c">
+            <div>
+              <div class="big">69<small>%</small></div>
+              <span class="sub">Codex week · 2d 22h</span>
+            </div>
+            <div class="mini">
+              <div class="claude"><div class="top"><span>Claude</span><span>51%</span></div><div class="track thin"><div class="fill" style="width:51%"></div></div></div>
+              <div class="codex"><div class="top"><span>Codex</span><span>69%</span></div><div class="track thin"><div class="fill" style="width:69%"></div></div></div>
+            </div>
+          </div>
+          <div class="w m c">
+            <div class="half claude">
+              <span class="label">Claude</span>
+              <div class="big">51<small>%</small></div>
+              <div class="mini"><div class="track thin"><div class="fill" style="width:51%"></div></div><span class="sub">Session · 3h 6m</span></div>
+            </div>
+            <div class="half codex">
+              <span class="label">Codex</span>
+              <div class="big">69<small>%</small></div>
+              <div class="mini"><div class="track thin"><div class="fill" style="width:69%"></div></div><span class="sub">Week · 2d 22h</span></div>
+            </div>
+          </div>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <section>
+    <h2>Menu bar</h2>
+    <div class="option">
+      <p class="note">Each item shows the tightest limit per tool: Claude 51% (session), Codex 69% (week). The shaded item is Quota Rings; the rest stand in for other menu bar items. The full list with reset times stays in the dropdown.</p>
+      <div class="mb-list">
+        <div class="mb">
+          <div class="head"><h3>1. Numbers only</h3><span class="tag">Smallest</span></div>
+          <div class="menubar"><span class="dim">Wi-Fi</span><span class="ours">51% · 69%</span><span class="dim">Sat 10:13</span></div>
+          <p class="note">No icon. Always Claude first, Codex second. Hard to tell apart from other number items like battery or CPU.</p>
+        </div>
+        <div class="mb">
+          <div class="head"><h3>2. "AI" marker</h3><span class="tag">Recommended</span></div>
+          <div class="menubar"><span class="dim">Wi-Fi</span><span class="ours"><span class="ai">AI</span> 51% · 69%</span><span class="dim">Sat 10:13</span></div>
+          <p class="note">Two letters make the item easy to find. The order stays fixed.</p>
+        </div>
+        <div class="mb">
+          <div class="head"><h3>3. Named</h3></div>
+          <div class="menubar"><span class="dim">Wi-Fi</span><span class="ours">Claude 51% · Codex 69%</span><span class="dim">Sat 10:13</span></div>
+          <p class="note">No guessing, but about three times as wide. Initials don't work because both names start with C.</p>
+        </div>
+        <div class="mb">
+          <div class="head"><h3>4. Two bars and the worst number</h3></div>
+          <div class="menubar"><span class="dim">Wi-Fi</span><span class="ours"><span class="glyph"><i><b style="height:51%"></b></i><i><b style="height:69%"></b></i></span>69%</span><span class="dim">Sat 10:13</span></div>
+          <p class="note">A two-bar glyph, then the highest percentage. The bars take the place of the rings logo.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Recommendation</h2>
+    <div class="pickbox">
+      <p><strong>Widget A with menu bar 2.</strong> Both keep one number per tool, so the layout doesn't change when Claude adds or drops a model limit.</p>
+      <ul>
+        <li>When Codex isn't installed or signed in, its row is hidden and the widget shows Claude alone.</li>
+        <li>Bars use the tool color. They switch to amber at 80% and red at 95%, which replaces the <code>severity</code> field Codex doesn't send.</li>
+        <li>A Codex limit whose <code>resets_at</code> has passed shows 0% until Codex writes a new event.</li>
+        <li>The rings app icon and the <code>MiniRings</code> header mark go away. The "Quota Rings" name then no longer fits, so renaming is a separate decision.</li>
+      </ul>
+    </div>
+  </section>
+</main>

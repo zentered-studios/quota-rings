@@ -24,7 +24,7 @@ Quota Rings shows your coding assistant plan limits on your Mac desktop.
 - Updates every 5 minutes, after wake, and when you click the widget.
 - Clear status when you are signed out, offline or your sign-in expired. Old numbers dim instead of pretending to be current.
 
-Requirements: macOS 14 or later, and Claude Code signed in with a Pro or Max plan. Quota Rings reads the sign-in that Claude Code already stores on your Mac. It never asks for a password and never changes that sign-in.
+Requirements: macOS 14 or later and a Claude Pro or Max plan. Quota Rings either reads the sign-in that Claude Code already stores on your Mac, or you sign in to claude.ai once in the app. It never changes Claude Code's sign-in.
 
 Quota Rings is an independent app. It is not made, endorsed or supported by Anthropic. Claude and Claude Code are trademarks of Anthropic.
 

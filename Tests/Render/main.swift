@@ -10,17 +10,17 @@ var data = SnapshotStore.load().flatMap { $0.limits.isEmpty ? nil : $0 } ?? .pla
 data.status = nil
 if data.codex == nil { data.codex = UsageSnapshot.placeholder.codex }
 
-func withStatus(_ status: UsageStatus, keepLimits: Bool) -> UsageSnapshot {
-    var s = data
-    s.status = status
-    if !keepLimits { s.limits = [] }
-    return s
-}
-
 func variant(_ change: (inout UsageSnapshot) -> Void) -> UsageSnapshot {
     var s = data
     change(&s)
     return s
+}
+
+func withStatus(_ status: UsageStatus, keepLimits: Bool) -> UsageSnapshot {
+    variant {
+        $0.status = status
+        if !keepLimits { $0.limits = [] }
+    }
 }
 
 let small = CGSize(width: 170, height: 170)

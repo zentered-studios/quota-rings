@@ -227,16 +227,18 @@ do {
     expect(false, "codex snapshot threw \(error)")
 }
 
-// Menu bar: each tool's tightest limit, Codex only when present.
-expect(UsageSnapshot.menuBarTitle(for: nil) == "Claude --", "menu bar before first fetch")
-expect(UsageSnapshot.menuBarTitle(for: .placeholder) == "Claude 64% · Codex 69%",
+// Menu bar: session%/week% per tool, "--" for a window the tool does not report, Codex only when present.
+expect(UsageSnapshot.menuBarTitle(for: nil) == "Claude --/--", "menu bar before first fetch")
+expect(UsageSnapshot.menuBarTitle(for: .placeholder) == "Claude 12%/64% · Codex --/69%",
        "menu bar both: \(UsageSnapshot.menuBarTitle(for: .placeholder))")
 var claudeOnly = UsageSnapshot.placeholder
 claudeOnly.codex = []
-expect(UsageSnapshot.menuBarTitle(for: claudeOnly) == "Claude 64%", "menu bar without codex")
+expect(UsageSnapshot.menuBarTitle(for: claudeOnly) == "Claude 12%/64%", "menu bar without codex")
 claudeOnly.limits = []
-claudeOnly.codex = UsageSnapshot.placeholder.codex
-expect(UsageSnapshot.menuBarTitle(for: claudeOnly) == "Claude -- · Codex 69%", "menu bar signed out of claude")
+claudeOnly.codex = [UsageLimit(kind: .session, label: "Session", percent: 7.6, resetsAt: nil, severity: "normal"),
+                    UsageLimit(kind: .weekly, label: "Week", percent: 40, resetsAt: nil, severity: "normal")]
+expect(UsageSnapshot.menuBarTitle(for: claudeOnly) == "Claude --/-- · Codex 8%/40%",
+       "menu bar signed out of claude: \(UsageSnapshot.menuBarTitle(for: claudeOnly))")
 
 if failures == 0 {
     print("All parser tests passed")

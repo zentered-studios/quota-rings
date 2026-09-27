@@ -86,13 +86,16 @@ struct UsageSnapshot: Codable {
     var codex: [UsageLimit]? = nil
 
 
-    /// "Claude 51% · Codex 69%": each tool's tightest limit. Codex only when it logged limits.
+    /// "Claude 13%/27% · Codex --/2%": session and week per tool. Codex only when it logged limits.
     static func menuBarTitle(for snapshot: UsageSnapshot?) -> String {
-        func percent(_ limits: [UsageLimit]?) -> String? {
-            limits?.tightest.map { "\(Int($0.percent.rounded()))%" }
+        /// "13%/27%": session, then week. "--" for a window the tool does not report.
+        func windows(_ limits: [UsageLimit]) -> String {
+            [UsageLimit.Kind.session, .weekly]
+                .map { kind in limits.first { $0.kind == kind }.map { "\(Int($0.percent.rounded()))%" } ?? "--" }
+                .joined(separator: "/")
         }
-        var parts = ["Claude \(percent(snapshot?.limits) ?? "--")"]
-        if let codex = percent(snapshot?.codex) { parts.append("Codex \(codex)") }
+        var parts = ["Claude \(windows(snapshot?.limits ?? []))"]
+        if let codex = snapshot?.codex, !codex.isEmpty { parts.append("Codex \(windows(codex))") }
         return parts.joined(separator: " · ")
     }
 

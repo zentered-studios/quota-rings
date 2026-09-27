@@ -63,7 +63,7 @@ The states describe the Claude fetch. When Codex has limits, the widget keeps it
 ## Develop
 
 ```sh
-./scripts/install.sh      # build Release, install to ~/Applications, launch
+./scripts/install.sh      # build Release, install to /Applications, launch
 ./scripts/test.sh         # parser tests
 ./scripts/render.sh       # render every widget state to build/render/*.png
 ./scripts/icon.sh         # render the app icon into the asset catalog

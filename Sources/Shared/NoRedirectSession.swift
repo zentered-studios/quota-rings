@@ -1,7 +1,7 @@
 import Foundation
 
-/// Refuses every HTTP redirect. The fetchers put credentials in hand-set headers
-/// (`Authorization`, `Cookie`), which URLSession would otherwise carry to the redirect target.
+/// Refuses every HTTP redirect. The fetcher puts the token in a hand-set `Authorization`
+/// header, which URLSession would otherwise carry to the redirect target.
 /// A redirect then surfaces as its 3xx response and fails as an HTTP error.
 final class NoRedirectDelegate: NSObject, URLSessionTaskDelegate {
     func urlSession(

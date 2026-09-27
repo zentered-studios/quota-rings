@@ -29,22 +29,19 @@ final class UsageModel: ObservableObject {
     static let shared = UsageModel()
     static let pollInterval: TimeInterval = 5 * 60
     private static let didSetUpLoginItemKey = "didSetUpLoginItem"
-    private static let dataSourceKey = "dataSource"
 
     @Published private(set) var snapshot: UsageSnapshot?
     @Published var launchAtLogin = SMAppService.mainApp.status == .enabled
-    @Published private(set) var dataSource: DataSource =
-        DataSource(rawValue: UserDefaults.standard.string(forKey: UsageModel.dataSourceKey) ?? "") ?? .claudeCode
-    @Published private(set) var hasClaudeAISession = SessionKeyStore.load() != nil
 
     private var timer: Timer?
     private var wakeObserver: NSObjectProtocol?
     /// Bumped by every refresh. A fetch that finishes after a newer one started is dropped,
-    /// so a slow request cannot overwrite fresher numbers or another source's result.
+    /// so a slow request cannot overwrite fresher numbers.
     private var refreshGeneration = 0
 
     private init() {
         snapshot = SnapshotStore.load()
+        Self.removeClaudeAISession()
         enableLoginItemOnFirstLaunch()
         Task { await refresh() }
         timer = Timer.scheduledTimer(withTimeInterval: Self.pollInterval, repeats: true) { [weak self] _ in
@@ -61,10 +58,9 @@ final class UsageModel: ObservableObject {
     func refresh() async {
         refreshGeneration += 1
         let generation = refreshGeneration
-        let source = dataSource
         let result: Result<[UsageLimit], Error>
         do {
-            result = .success(try await source.fetch())
+            result = .success(try await UsageFetcher.fetch())
         } catch {
             result = .failure(error)
         }
@@ -76,16 +72,14 @@ final class UsageModel: ObservableObject {
         case .success(let limits):
             next = UsageSnapshot(limits: limits, fetchedAt: Date())
         case .failure(let error):
-            let status = source.status(for: error)
+            let status = UsageFetcher.status(for: error)
             // Keep the last good values unless the account state changed under them.
             next = snapshot ?? UsageSnapshot(limits: [], fetchedAt: Date())
             if status.clearsLimits { next.limits = [] }
             next.status = status
-            next.statusDetail = source.detail(for: status, error: error)
             next.error = error.localizedDescription
         }
         next.codex = codex
-        hasClaudeAISession = SessionKeyStore.load() != nil
         snapshot = next
         do {
             try SnapshotStore.save(next)
@@ -96,34 +90,13 @@ final class UsageModel: ObservableObject {
         WidgetCenter.shared.reloadAllTimelines()
     }
 
-    func setDataSource(_ source: DataSource) {
-        guard source != dataSource else { return }
-        dataSource = source
-        UserDefaults.standard.set(source.rawValue, forKey: Self.dataSourceKey)
-        // Numbers and errors from the other source may belong to another account.
-        snapshot?.limits = []
-        snapshot?.status = nil
-        snapshot?.statusDetail = nil
-        snapshot?.error = nil
-        if source == .claudeAI && SessionKeyStore.load() == nil {
-            // No refresh starts here, so drop any fetch still running for the previous source.
-            refreshGeneration += 1
-            signInToClaudeAI()
-        } else {
-            Task { await refresh() }
-        }
-    }
-
-    func signInToClaudeAI() {
-        SignInWindowController.show { [weak self] in
-            Task { await self?.refresh() }
-        }
-    }
-
-    func signOutOfClaudeAI() {
-        SessionKeyStore.delete()
-        hasClaudeAISession = false
-        Task { await refresh() }
+    /// Earlier builds could sign in to claude.ai and kept its session key in the Keychain.
+    /// That source is gone, so delete any key and setting it left behind.
+    private static func removeClaudeAISession() {
+        let query: [String: Any] = [kSecClass as String: kSecClassGenericPassword,
+                                    kSecAttrService as String: "com.zentered.quotarings.claude-ai"]
+        SecItemDelete(query as CFDictionary)
+        UserDefaults.standard.removeObject(forKey: "dataSource")
     }
 
     /// The widget only updates while this app runs, so offer to start at login once.
@@ -169,7 +142,7 @@ struct MenuContent: View {
             Section("Claude") {
                 if let status = snapshot.status {
                     Label(status.title, systemImage: status.symbol)
-                    if let detail = snapshot.detailText { Text(detail) }
+                    Text(status.detail)
                     if let error = snapshot.error, status == .failed {
                         Text(error)
                     }
@@ -195,19 +168,6 @@ struct MenuContent: View {
         }
         Button("Refresh Now") { Task { await model.refresh() } }
             .keyboardShortcut("r")
-        Picker("Data Source", selection: Binding(
-            get: { model.dataSource },
-            set: { model.setDataSource($0) }
-        )) {
-            ForEach(DataSource.allCases, id: \.self) { Text($0.menuTitle).tag($0) }
-        }
-        if model.dataSource == .claudeAI {
-            if model.hasClaudeAISession {
-                Button("Sign Out of claude.ai") { model.signOutOfClaudeAI() }
-            } else {
-                Button("Sign In to claude.ai…") { model.signInToClaudeAI() }
-            }
-        }
         Toggle("Open at Login", isOn: Binding(
             get: { model.launchAtLogin },
             set: { model.setLaunchAtLogin($0) }

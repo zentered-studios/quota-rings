@@ -75,7 +75,7 @@ struct UsageWidgetContent: View {
                     }
                     Spacer(minLength: 0)
                     if size == .medium, let status = snapshot.status {
-                        StatusLine(symbol: status.symbol, text: "Claude: \(status.title) · \(snapshot.detailText ?? status.detail)")
+                        StatusLine(symbol: status.symbol, text: "Claude: \(status.title) · \(status.detail)")
                     } else if stale && snapshot.status == nil {
                         StatusLine(symbol: "exclamationmark.triangle.fill",
                                    text: "Updated \(shortAge(since: snapshot.fetchedAt, now: now))")
@@ -100,7 +100,7 @@ struct StateInfo {
         if let status = snapshot?.status {
             symbol = status.symbol
             title = status.title
-            detail = snapshot?.detailText ?? status.detail
+            detail = status.detail
         } else if snapshot == nil {
             symbol = "power"
             title = "Not running"

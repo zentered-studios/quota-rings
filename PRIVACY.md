@@ -2,18 +2,14 @@
 
 Quota Rings collects no data. It sends nothing to its developer and runs without analytics or crash reporting.
 
-Quota Rings reads Claude usage from one of two sources, which you pick in the menu bar menu. It also reads Codex usage when Codex is installed.
+Quota Rings reads Claude usage through Claude Code's sign-in, and Codex usage from Codex's logs when Codex is installed.
 
 ## Claude Code sign-in
 
 - **Reads:** the Claude Code sign-in stored in your macOS Keychain under `Claude Code-credentials`. The app reads the access token only. It never changes, refreshes or copies that sign-in.
 - **Sends:** one request every 5 minutes, after wake and when you click the widget, to `https://api.anthropic.com/api/oauth/usage`, with that access token.
 
-## claude.ai sign-in
-
-- **Reads:** the `sessionKey` cookie that claude.ai sets when you sign in through the app's login window. The window is a full web view and follows claude.ai's own sign-in links, such as Google or Apple sign-in. It uses a private web view store, so the rest of that login is discarded when it closes. Only a `sessionKey` cookie from a claude.ai domain is kept.
-- **Stores:** that session key in the app's own Keychain item, `com.zentered.quotarings.claude-ai`, readable on this Mac only. When claude.ai issues a new key, the app replaces the old one. **Sign Out of claude.ai** in the menu deletes it.
-- **Sends:** the same schedule of requests to `https://claude.ai/api/organizations` and `https://claude.ai/api/organizations/{id}/usage`, with that session key.
+Earlier builds could sign in to claude.ai and kept a session key in the Keychain item `com.zentered.quotarings.claude-ai`. The current app deletes that item on launch and stores no Claude credentials.
 
 ## Codex
 

@@ -1,5 +1,6 @@
 #!/bin/sh
-# Build a Developer ID signed, notarized and stapled DMG in build/release.
+# Build a Developer ID signed, notarized and stapled DMG in build/release,
+# then attach it to a draft GitHub release for review.
 #
 #   TEAM_ID=ABCDE12345 ./scripts/release.sh
 #
@@ -10,6 +11,7 @@
 #        xcrun notarytool store-credentials quota-rings --apple-id YOU@example.com --team-id ABCDE12345
 #
 # SKIP_NOTARIZE=1 builds and signs the DMG without submitting it to Apple.
+# SKIP_GITHUB=1 stops before creating the draft release.
 set -eu
 cd "$(dirname "$0")/.."
 
@@ -68,3 +70,11 @@ xcrun notarytool submit "$DMG" --keychain-profile "$NOTARY_PROFILE" --wait
 xcrun stapler staple "$DMG"
 spctl --assess --type open --context context:primary-signature --verbose "$DMG"
 echo "Release ready: $DMG"
+
+if [ "${SKIP_GITHUB:-0}" = "1" ]; then
+  exit 0
+fi
+
+echo "==> Draft GitHub release v$VERSION"
+# A draft is visible only to maintainers. Publishing it creates the tag and makes it public.
+gh release create "v$VERSION" "$DMG" --draft --title "Quota Rings $VERSION" --generate-notes

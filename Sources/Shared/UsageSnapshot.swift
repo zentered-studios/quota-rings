@@ -75,27 +75,27 @@ enum UsageStatus: String, Codable {
 
 /// What the host app writes to disk and the widget reads.
 struct UsageSnapshot: Codable {
-    /// Claude limits. `status`, `statusDetail` and `error` describe the last Claude fetch.
+    /// Claude limits. `status` and `error` describe the last Claude fetch.
     var limits: [UsageLimit]
     var fetchedAt: Date
     /// Set when the last fetch failed. `limits` may then hold the previous good values.
     var status: UsageStatus?
-    /// Next step that replaces `status.detail`, e.g. when the data source is claude.ai.
-    var statusDetail: String?
     /// Technical detail for the last failure, shown in the menu.
     var error: String?
     /// Codex limits from its session logs. Nil when Codex is not installed or has never logged limits.
     var codex: [UsageLimit]? = nil
 
-    var detailText: String? { statusDetail ?? status?.detail }
 
-    /// "Claude 51% · Codex 69%": each tool's tightest limit. Codex only when it logged limits.
+    /// "Claude 13%/27% · Codex --/2%": session and week per tool. Codex only when it logged limits.
     static func menuBarTitle(for snapshot: UsageSnapshot?) -> String {
-        func percent(_ limits: [UsageLimit]?) -> String? {
-            limits?.tightest.map { "\(Int($0.percent.rounded()))%" }
+        /// "13%/27%": session, then week. "--" for a window the tool does not report.
+        func windows(_ limits: [UsageLimit]) -> String {
+            [UsageLimit.Kind.session, .weekly]
+                .map { kind in limits.first { $0.kind == kind }.map { "\(Int($0.percent.rounded()))%" } ?? "--" }
+                .joined(separator: "/")
         }
-        var parts = ["Claude \(percent(snapshot?.limits) ?? "--")"]
-        if let codex = percent(snapshot?.codex) { parts.append("Codex \(codex)") }
+        var parts = ["Claude \(windows(snapshot?.limits ?? []))"]
+        if let codex = snapshot?.codex, !codex.isEmpty { parts.append("Codex \(windows(codex))") }
         return parts.joined(separator: " · ")
     }
 

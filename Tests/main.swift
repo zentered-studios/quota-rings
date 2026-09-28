@@ -84,74 +84,21 @@ do {
     expect(false, "snapshot round-trip threw \(error)")
 }
 
-// claude.ai: the plan organization is the one with the chat capability.
-let orgs = ClaudeWebParsing.organizations(from: Data(#"""
-[
-  {"uuid": "api-org", "name": "API", "capabilities": ["api"]},
-  {"uuid": "chat-org", "name": "Personal", "capabilities": ["chat", "claude_max"]},
-  {"name": "no id"}
-]
-"""#.utf8))
-expect(orgs.count == 2, "orgs without uuid are skipped: \(orgs.count)")
-expect(ClaudeWebParsing.planOrganization(in: orgs)?.id == "chat-org", "picks chat org")
-expect(ClaudeWebParsing.planOrganization(in: [orgs[0]]) == nil, "API-only org has no plan limits")
-expect(ClaudeWebParsing.planOrganization(in: ClaudeWebParsing.organizations(from: Data(#"[{"uuid":"x"}]"#.utf8)))?.id == "x",
-       "org without capabilities is still used")
-expect(ClaudeWebParsing.organizations(from: Data("<html>".utf8)).isEmpty, "HTML is not an org list")
-// The id goes into a URL path, so anything but UUID characters is rejected.
-let unsafeOrgs = ClaudeWebParsing.organizations(from: Data(#"""
-[{"uuid": "../../account", "capabilities": ["chat"]}, {"uuid": "a1b2-c3?x=1", "capabilities": ["chat"]},
- {"uuid": "0f8e2c1a-9b7d-4e6f-a5c3-2d1e0f9a8b7c", "capabilities": ["chat"]}]
-"""#.utf8))
-expect(unsafeOrgs.map(\.id) == ["0f8e2c1a-9b7d-4e6f-a5c3-2d1e0f9a8b7c"], "unsafe org ids skipped: \(unsafeOrgs.map(\.id))")
-
-// claude.ai: only claude.ai and its subdomains may supply the session cookie.
-for domain in ["claude.ai", ".claude.ai", "www.claude.ai", "CLAUDE.AI", ".Claude.ai"] {
-    expect(ClaudeWebParsing.isClaudeCookieDomain(domain), "\(domain) is claude.ai")
-}
-for domain in ["evilclaude.ai", ".notclaude.ai", "claude.ai.example.com", ""] {
-    expect(!ClaudeWebParsing.isClaudeCookieDomain(domain), "\(domain) is not claude.ai")
-}
-
-// claude.ai: Cloudflare challenge vs. a real auth failure.
-expect(ClaudeWebParsing.isCloudflareChallenge(status: 403, contentType: "text/html; charset=UTF-8", body: Data()),
-       "403 HTML is a challenge")
-expect(!ClaudeWebParsing.isCloudflareChallenge(status: 403, contentType: "application/json",
-                                               body: Data(#"{"error":"permission_error"}"#.utf8)),
-       "403 JSON is an auth failure")
-expect(!ClaudeWebParsing.isCloudflareChallenge(status: 401, contentType: "text/html", body: Data()), "401 is never a challenge")
-
-// claude.ai: a rotated sessionKey in Set-Cookie is picked up.
-let claudeURL = URL(string: "https://claude.ai/api/organizations")!
-expect(ClaudeWebParsing.renewedSessionKey(
-    headers: ["Set-Cookie": "sessionKey=sk-new; Domain=.claude.ai; Path=/; Secure; HttpOnly"], url: claudeURL) == "sk-new",
-    "renewed session key")
-expect(ClaudeWebParsing.renewedSessionKey(headers: ["Set-Cookie": "other=1; Path=/"], url: claudeURL) == nil,
-       "unrelated cookie ignored")
-expect(ClaudeWebParsing.renewedSessionKey(
-    headers: ["Set-Cookie": "sessionKey=sk-evil; Path=/"], url: URL(string: "https://evilclaude.ai/x")!) == nil,
-    "session key from another host ignored")
-
 // Credential sessions refuse redirects: the delegate answers nil for any redirect target.
 do {
-    let original = URL(string: "https://claude.ai/api/organizations")!
+    let original = URL(string: "https://api.anthropic.com/api/oauth/usage")!
     let task = URLSession(configuration: .ephemeral).dataTask(with: original) // never resumed, no network
     let redirect = HTTPURLResponse(url: original, statusCode: 302, httpVersion: "HTTP/1.1",
                                    headerFields: ["Location": "https://example.com/"])!
     var request = URLRequest(url: URL(string: "https://example.com/")!)
-    request.setValue("sessionKey=secret", forHTTPHeaderField: "Cookie")
+    request.setValue("Bearer secret", forHTTPHeaderField: "Authorization")
     var followed: URLRequest?? = .none
     NoRedirectDelegate().urlSession(URLSession.credentialSession(), task: task, willPerformHTTPRedirection: redirect,
                                     newRequest: request) { followed = .some($0) }
     expect(followed != nil, "delegate answered")
-    expect(followed! == nil, "redirect refused, cookie not forwarded")
+    expect(followed! == nil, "redirect refused, token not forwarded")
 }
 
-// The claude.ai source can override the widget's next-step text.
-var webSnapshot = UsageSnapshot(limits: [], fetchedAt: Date(), status: .expired)
-expect(webSnapshot.detailText == UsageStatus.expired.detail, "default detail")
-webSnapshot.statusDetail = "Sign in to claude.ai again from the menu bar."
-expect(webSnapshot.detailText == "Sign in to claude.ai again from the menu bar.", "override detail")
 
 // Codex: lines trimmed from a real ~/.codex/sessions log on 2026-09-26.
 let codexNow = Date(timeIntervalSince1970: 1790442000) // 2026-09-26T17:00:00Z
@@ -280,16 +227,18 @@ do {
     expect(false, "codex snapshot threw \(error)")
 }
 
-// Menu bar: each tool's tightest limit, Codex only when present.
-expect(UsageSnapshot.menuBarTitle(for: nil) == "Claude --", "menu bar before first fetch")
-expect(UsageSnapshot.menuBarTitle(for: .placeholder) == "Claude 64% · Codex 69%",
+// Menu bar: session%/week% per tool, "--" for a window the tool does not report, Codex only when present.
+expect(UsageSnapshot.menuBarTitle(for: nil) == "Claude --/--", "menu bar before first fetch")
+expect(UsageSnapshot.menuBarTitle(for: .placeholder) == "Claude 12%/64% · Codex --/69%",
        "menu bar both: \(UsageSnapshot.menuBarTitle(for: .placeholder))")
 var claudeOnly = UsageSnapshot.placeholder
 claudeOnly.codex = []
-expect(UsageSnapshot.menuBarTitle(for: claudeOnly) == "Claude 64%", "menu bar without codex")
+expect(UsageSnapshot.menuBarTitle(for: claudeOnly) == "Claude 12%/64%", "menu bar without codex")
 claudeOnly.limits = []
-claudeOnly.codex = UsageSnapshot.placeholder.codex
-expect(UsageSnapshot.menuBarTitle(for: claudeOnly) == "Claude -- · Codex 69%", "menu bar signed out of claude")
+claudeOnly.codex = [UsageLimit(kind: .session, label: "Session", percent: 7.6, resetsAt: nil, severity: "normal"),
+                    UsageLimit(kind: .weekly, label: "Week", percent: 40, resetsAt: nil, severity: "normal")]
+expect(UsageSnapshot.menuBarTitle(for: claudeOnly) == "Claude --/-- · Codex 8%/40%",
+       "menu bar signed out of claude: \(UsageSnapshot.menuBarTitle(for: claudeOnly))")
 
 if failures == 0 {
     print("All parser tests passed")

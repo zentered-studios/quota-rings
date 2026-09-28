@@ -1,16 +1,16 @@
 # Listing copy
 
-Copy for the download page, GitHub release and any directory listing. Character limits follow App Store Connect in case the app ever ships there.
+Copy for the GitHub release page and the repository description. Quota Rings ships only on GitHub, not on the App Store.
 
-## Name (30)
+## Name
 
 Quota Rings
 
-## Subtitle (30)
+## Tagline
 
 Plan limits on your desktop
 
-## Promotional text (170)
+## Short description
 
 See your Claude and Codex limits before you hit them. A desktop widget and menu bar item that update every 5 minutes.
 
@@ -24,21 +24,17 @@ Quota Rings shows your coding assistant plan limits on your Mac desktop.
 - Updates every 5 minutes, after wake, and when you click the widget.
 - Clear status when you are signed out, offline or your sign-in expired. Old numbers dim instead of pretending to be current.
 
-Requirements: macOS 14 or later and a Claude Pro or Max plan. Quota Rings either reads the sign-in that Claude Code already stores on your Mac, or you sign in to claude.ai once in the app. It never changes Claude Code's sign-in. Codex usage is optional and comes from the logs Codex CLI writes on your Mac, with no network request.
+Requirements: macOS 14 or later and a Claude Pro or Max plan. Quota Rings reads the sign-in that Claude Code already stores on your Mac and never changes it. Codex usage is optional and comes from the logs Codex CLI writes on your Mac, with no network request.
 
 Quota Rings is an independent app. It is not made, endorsed or supported by Anthropic or OpenAI. Claude and Claude Code are trademarks of Anthropic.
 
-## Keywords (100)
+## GitHub topics
 
-usage,quota,limits,widget,menu bar,codex,AI,coding,plan,developer,tokens,rate limit
-
-## Category
-
-Developer Tools
+macos, widget, menu-bar, claude-code, codex, usage, swiftui
 
 ## Release notes for 0.1.0
 
-First release. Desktop widget in small and medium sizes, menu bar item, and status for signed-out, expired, offline and no-plan states.
+First release. Claude and Codex limits in small and medium desktop widgets and the menu bar, with status for signed-out, expired, offline and no-plan states.
 
 ## Screenshots
 

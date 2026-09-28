@@ -8,22 +8,15 @@ Quota Rings is an independent app. It is not made, endorsed or supported by Anth
 
 ## How it works
 
-- `Quota Rings.app` runs in the menu bar and shows each tool's tightest limit, for example `Claude 51% · Codex 69%`. Its menu lists every limit with its reset time. The first time it runs, it asks whether to open at login.
+- `Quota Rings.app` runs in the menu bar and shows session and weekly usage per tool, for example `Claude 13%/27% · Codex --/2%`. `--` marks a window the tool does not report. Its menu lists every limit with its reset time. The first time it runs, it asks whether to open at login.
 - Every 5 minutes, after wake, and when you click the widget, the app reads Claude Code's OAuth token from the Keychain item `Claude Code-credentials` and calls `GET https://api.anthropic.com/api/oauth/usage`. Claude Code's `/usage` reads the same endpoint.
 - On the same schedule it reads Codex limits from its session logs. See [Codex](#codex).
 - It writes the result to `~/Library/Application Support/QuotaRings/usage.json` and reloads the widget.
 - The widget is sandboxed. It has read-only access to that one folder and no network or Keychain access.
 
-### Data sources
+### Claude
 
-Pick one under **Data Source** in the menu bar menu.
-
-| Source | Setup | How it fetches |
-| --- | --- | --- |
-| Claude Code sign-in (default) | None, if Claude Code is signed in | Keychain token, `GET api.anthropic.com/api/oauth/usage` |
-| claude.ai sign-in | Sign in once in the app's login window | Own session key, `GET claude.ai/api/organizations`, then `GET claude.ai/api/organizations/{uuid}/usage` |
-
-The claude.ai source needs no access to Claude Code, so it can also work inside the app sandbox. The login window uses a private web view store. The app keeps only the `sessionKey` cookie, in its own Keychain item `com.zentered.quotarings.claude-ai`, and saves a new key when claude.ai rotates it. Google sign-in may refuse to run in an embedded web view. The email code login works. Both claude.ai endpoints are undocumented.
+Claude usage comes only from Claude Code's own sign-in. The app has no login of its own and stores no Claude credentials. Earlier builds offered a claude.ai sign-in. On launch the app deletes the session key those builds kept in the Keychain item `com.zentered.quotarings.claude-ai`.
 
 The app never refreshes the Claude Code token. Refreshing would rotate the refresh token Claude Code stores and sign Claude Code out. When the token expires, the widget shows "Sign-in expired" until you run `claude` once.
 
@@ -63,7 +56,7 @@ The states describe the Claude fetch. When Codex has limits, the widget keeps it
 ## Develop
 
 ```sh
-./scripts/install.sh      # build Release, install to ~/Applications, launch
+./scripts/install.sh      # build Release, install to /Applications, launch
 ./scripts/test.sh         # parser tests
 ./scripts/render.sh       # render every widget state to build/render/*.png
 ./scripts/icon.sh         # render the app icon into the asset catalog
@@ -76,7 +69,7 @@ Local builds sign ad hoc (`CODE_SIGN_IDENTITY = "-"`) and need no developer acco
 
 ## Release
 
-Releases ship as a notarized DMG. App Store apps must run in the app sandbox, and a sandboxed app cannot read Claude Code's Keychain item.
+Releases ship as a notarized DMG on [GitHub Releases](https://github.com/zentered-studios/quota-rings/releases). There is no App Store version: App Store apps must run in the app sandbox, and a sandboxed app cannot read Claude Code's Keychain item.
 
 One-time setup:
 
@@ -93,9 +86,9 @@ Each release:
 TEAM_ID=YOUR_TEAM_ID ./scripts/release.sh
 ```
 
-This archives, exports with Developer ID, packages `build/release/QuotaRings-<version>.dmg`, signs it, notarizes it and staples the ticket. Set `SKIP_NOTARIZE=1` to stop after signing. Bump `MARKETING_VERSION` and `CURRENT_PROJECT_VERSION` in `project.yml` first.
+This archives, exports with Developer ID, packages `build/release/QuotaRings-<version>.dmg`, signs it, notarizes it and staples the ticket. It then creates a draft GitHub release `v<version>` with the DMG attached. Review the notes and publish it on GitHub. Set `SKIP_NOTARIZE=1` to stop after signing, or `SKIP_GITHUB=1` to skip the draft. Bump `MARKETING_VERSION` and `CURRENT_PROJECT_VERSION` in `project.yml` first.
 
-Listing copy is in `docs/listing.md`. The privacy policy is `PRIVACY.md`.
+Release page copy is in `docs/listing.md`. The privacy policy is `PRIVACY.md`.
 
 ## Uninstall
 
